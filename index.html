@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>绝区零 2026 FES · 官图精准几何 3D 建筑灰模导览图</title>
+  <script src="./vendor/tailwindcss.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; width: 100%; }
+    #mapStage {
+      position: relative;
+      width: 100%;
+      height: 760px;
+      min-height: 640px;
+      overflow: hidden;
+    }
+    #mapCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+    #mapCanvas:active { cursor: grabbing; }
+    .sidebar-open { transform: translateX(0); }
+    .sidebar-closed { transform: translateX(105%); pointer-events: none; }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased m-0 p-0">
+  <div id="mapStage">
+    <canvas id="mapCanvas"></canvas>
+
+    <!-- 顶部悬浮栏：展馆切换 + 搜索 + 筛选 -->
+    <div id="topBar" class="absolute top-3 left-3 right-3 z-20 flex flex-col items-center pointer-events-none gap-2 transition-all duration-200">
+      <div class="pointer-events-auto w-full max-w-2xl bg-[var(--card)]/95 backdrop-blur border border-[var(--border)] rounded-full shadow-lg px-3 py-1.5 flex items-center gap-2">
+        <button onclick="togglePosterWall()" title="原生海报墙" class="text-sm px-2 py-0.5 rounded-full hover:bg-[var(--content)] cursor-pointer shrink-0">🖼️</button>
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="搜官方区（游乐岛/中央公园/贝克福德街）或同人摊（D09/雨果/邦布）..."
+          class="w-full bg-transparent text-xs md:text-sm text-[var(--foreground)] placeholder:text-[var(--placeholder)] focus:outline-none"
+        />
+        <button id="btnClearSearch" onclick="clearSearch()" class="hidden text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] px-1 cursor-pointer">✕</button>
+        <button onclick="openCurrentOfficialImg()" class="text-xs px-2.5 py-1 rounded-full bg-[var(--content)] border border-[var(--border)] hover:border-[var(--primary)] cursor-pointer shrink-0 font-medium">🗺️ 官方原图</button>
+      </div>
+
+      <!-- 视图切换（全馆 / 4 / 5 / 6）+ 筛选 -->
+      <div class="pointer-events-auto flex flex-wrap justify-center items-center gap-1.5 text-xs">
+        <div class="flex items-center rounded-full bg-[var(--card)]/95 border border-[var(--border)] p-0.5 shadow-sm" id="hallTabs">
+          <button data-hall="overview" class="hall-tab px-2.5 py-1 rounded-full text-[var(--muted-foreground)] cursor-pointer">全馆总览</button>
+          <button data-hall="h4" class="hall-tab px-2.5 py-1 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold cursor-pointer">4号馆·主展馆</button>
+          <button data-hall="h5" class="hall-tab px-2.5 py-1 rounded-full text-[var(--muted-foreground)] cursor-pointer">5号馆·舞台/LIVE</button>
+          <button data-hall="h6" class="hall-tab px-2.5 py-1 rounded-full text-[var(--muted-foreground)] cursor-pointer">6号馆·官方周边</button>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-1" id="filterBar">
+          <button data-filter="all" class="filter-btn px-2.5 py-1 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-medium shadow-sm cursor-pointer">全部</button>
+          <button data-filter="official" class="filter-btn px-2.5 py-1 rounded-full bg-[var(--card)]/92 border border-[var(--border)] text-[var(--foreground)] shadow-sm cursor-pointer">🏛️ 官方区</button>
+          <button data-filter="T0" class="filter-btn px-2.5 py-1 rounded-full bg-[var(--card)]/92 border border-[var(--border)] text-[var(--foreground)] shadow-sm cursor-pointer">🔴 T0顶流</button>
+          <button data-filter="T1" class="filter-btn px-2.5 py-1 rounded-full bg-[var(--card)]/92 border border-[var(--border)] text-[var(--foreground)] shadow-sm cursor-pointer">🟠 T1高热</button>
+          <button data-filter="starred" class="filter-btn px-2.5 py-1 rounded-full bg-[var(--card)]/92 border border-[var(--border)] text-[var(--foreground)] shadow-sm cursor-pointer">⭐ 清单 (<span id="favCountBadge">0</span>)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 左下角清晰图例（解释颜色含义） -->
+    <div class="absolute left-3 bottom-3 z-10 hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-full bg-[var(--card)]/92 backdrop-blur border border-[var(--border)] text-xs text-[var(--muted-foreground)] shadow pointer-events-none">
+      <span class="flex items-center gap-1"><i class="inline-block w-2.5 h-2.5 rounded-sm bg-[#eab308]"></i>官方展区</span>
+      <span class="flex items-center gap-1"><i class="inline-block w-2.5 h-2.5 rounded-sm bg-[#10b981]"></i>异业合作</span>
+      <span class="flex items-center gap-1"><i class="inline-block w-2.5 h-2.5 rounded-full bg-[#ef4444]"></i>同人T0(700+赞)</span>
+      <span class="flex items-center gap-1"><i class="inline-block w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></i>同人T1(400+赞)</span>
+      <span class="flex items-center gap-1"><i class="inline-block w-2.5 h-2.5 rounded-full bg-[#3b82f6]"></i>同人T2(200+赞)</span>
+    </div>
+
+    <!-- 右侧悬浮控制按钮 -->
+    <div id="mapControls" class="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 transition-all duration-200">
+      <button id="btnMode" onclick="toggleMode()" title="切换 3D 建筑灰模 / 2D 平面图" class="w-11 h-11 rounded-full bg-[var(--card)]/95 border border-[var(--border)] shadow-lg flex items-center justify-center text-xs font-bold hover:border-[var(--primary)] cursor-pointer">3D</button>
+      <button onclick="resetView()" title="回到默认视角" class="w-11 h-11 rounded-full bg-[var(--card)]/95 border border-[var(--border)] shadow-lg flex items-center justify-center text-base hover:border-[var(--primary)] cursor-pointer">⌂</button>
+      <button onclick="focusDoujinZone()" title="放大查看4号馆左下同人区" class="w-11 h-11 rounded-full bg-[var(--card)]/95 border border-[var(--border)] shadow-lg flex items-center justify-center text-[11px] font-bold hover:border-[var(--primary)] cursor-pointer">同人</button>
+      <div class="flex flex-col rounded-full bg-[var(--card)]/95 border border-[var(--border)] shadow-lg overflow-hidden">
+        <button onclick="zoomCenter(1.24)" title="放大" class="w-11 h-10 flex items-center justify-center text-lg hover:bg-[var(--content)] cursor-pointer">＋</button>
+        <div class="h-px bg-[var(--border)] mx-2"></div>
+        <button onclick="zoomCenter(0.80)" title="缩小" class="w-11 h-10 flex items-center justify-center text-lg hover:bg-[var(--content)] cursor-pointer">－</button>
+      </div>
+    </div>
+
+    <!-- 右侧大号详情侧栏 -->
+    <aside id="detailSidebar" class="absolute inset-y-0 right-0 z-30 w-full sm:w-[400px] md:w-[440px] bg-[var(--card)] border-l border-[var(--border)] shadow-2xl transition-transform duration-200 flex flex-col sidebar-closed">
+      <div id="sheetContent" class="flex flex-col h-full"></div>
+    </aside>
+
+    <!-- 原生海报墙抽屉 -->
+    <div id="posterWall" class="absolute inset-y-0 right-0 z-40 w-full max-w-md bg-[var(--card)] border-l border-[var(--border)] shadow-2xl transform translate-x-full transition-transform duration-200 flex flex-col">
+      <div class="p-4 border-b border-[var(--border)] flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-bold">🖼️ 同人区原生海报墙 & 官方原图</h2>
+          <p class="text-xs text-[var(--muted-foreground)] mt-0.5">点击任意海报直接定位到地图对应摊位</p>
+        </div>
+        <button onclick="togglePosterWall()" class="w-8 h-8 rounded-full hover:bg-[var(--content)] flex items-center justify-center cursor-pointer">✕</button>
+      </div>
+      <div id="posterGrid" class="p-3 grid grid-cols-2 gap-2.5 overflow-y-auto flex-1"></div>
+    </div>
+
+    <!-- 高清灯箱（支持长图滚轮浏览、1:1 原尺寸放大、左右翻页 & 键盘方向键） -->
+    <div id="lightbox" onclick="closeLightbox()" class="fixed inset-0 z-50 hidden flex-col bg-black/92">
+      <!-- 顶部固定工具栏 -->
+      <div class="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-black/80 border-b border-white/10 text-xs text-white" onclick="event.stopPropagation()">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="lightboxTitle" class="font-semibold truncate"></span>
+          <span id="lightboxCounter" class="font-mono text-white/70 shrink-0"></span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="lbPrev" onclick="stepLightbox(-1)" class="hidden px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 cursor-pointer">‹ 上一张</button>
+          <button id="lbNext" onclick="stepLightbox(1)" class="hidden px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 cursor-pointer">下一张 ›</button>
+          <button id="lbZoomBtn" onclick="toggleLightboxZoom()" class="px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 cursor-pointer">🔍 原尺寸</button>
+          <button onclick="closeLightbox()" class="px-3 py-1 rounded-full bg-white/20 hover:bg-white/30 font-semibold cursor-pointer">关闭 ✕</button>
+        </div>
+      </div>
+      <!-- 中间可滚动高清看图区（长图菜单不再被压扁，可上下流畅滚动阅读） -->
+      <div id="lbScroll" class="flex-1 overflow-auto p-4 flex justify-center items-start" onclick="closeLightbox()">
+        <img id="lightboxImg" src="" alt="原图" onclick="event.stopPropagation(); toggleLightboxZoom()" class="w-full max-w-[960px] h-auto rounded-lg shadow-2xl cursor-zoom-in" />
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========= 工具：生成官图精确几何多边形 =========
+    function rectPoly(x, y, w, d) {
+      return [[x, y], [x + w, y], [x + w, y + d], [x, y + d]];
+    }
+    function chamferRect(x, y, w, d, cTL, cTR, cBR, cBL) {
+      return [
+        [x + cTL, y], [x + w - cTR, y],
+        [x + w, y + cTR], [x + w, y + d - cBR],
+        [x + w - cBR, y + d], [x + cBL, y + d],
+        [x, y + d - cBL], [x, y + cTL]
+      ];
+    }
+    function circlePoly(cx, cy, r, segs = 28) {
+      const pts = [];
+      for (let i = 0; i < segs; i++) {
+        const a = (i / segs) * Math.PI * 2;
+        pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+      }
+      return pts;
+    }
+    // 官图「布连邦雕像 + 算枢中心」右凸圆弧复合体块
+    function statueComplexPoly() {
+      const pts = [
+        [758, 174], [912, 174], [912, 224]
+      ];
+      // 右侧半圆弧凸起
+      for (let i = -4; i <= 4; i++) {
+        const a = (i / 4) * (Math.PI / 2);
+        pts.push([912 + Math.cos(a) * 62, 294 + Math.sin(a) * 70]);
+      }
+      pts.push([912, 364], [912, 412], [758, 412]);
+      return pts;
+    }
+    function rotatePoly(pts, cx, cy, deg) {
+      const rad = deg * Math.PI / 180;
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+      return pts.map(([x, y]) => [
+        cx + (x - cx) * cos - (y - cy) * sin,
+        cy + (x - cx) * sin + (y - cy) * cos
+      ]);
+    }
+
+    // ========= 1. 全馆总览（严格按 m_venue.png 竖向场馆位置与倾斜角度） =========
+    const OVERVIEW_HALLS = [
+      // 非活动灰模馆（1/2/3/7/8号馆）
+      { id: "BG_8", bgOnly: true, label: "8", poly: rotatePoly(rectPoly(180, 120, 118, 210), 239, 225, 11), h: 24 },
+      { id: "BG_7", bgOnly: true, label: "7", poly: rotatePoly(rectPoly(320, 146, 118, 210), 379, 251, 11), h: 24 },
+      { id: "BG_1", bgOnly: true, label: "1", poly: rotatePoly(rectPoly(140, 420, 114, 196), 197, 518, 6), h: 24 },
+      { id: "BG_2", bgOnly: true, label: "2", poly: rotatePoly(rectPoly(276, 434, 114, 196), 333, 532, 7), h: 24 },
+      { id: "BG_3", bgOnly: true, label: "3", poly: rotatePoly(rectPoly(414, 456, 114, 196), 471, 554, 11), h: 24 },
+      // 中央连廊灰模
+      { id: "BG_C1", bgOnly: true, label: "", poly: rotatePoly(rectPoly(245, 365, 145, 48), 317, 389, 8), h: 14 },
+      { id: "BG_C2", bgOnly: true, label: "", poly: rotatePoly(rectPoly(410, 388, 155, 48), 487, 412, 8), h: 14 },
+
+      // 活动三馆（严格对应官图黄色高亮竖向三馆 + 东登录厅）
+      { id: "OV_6", targetHall: "h6", label: "6号馆", sub: "官方周边贩售区", poly: rectPoly(466, 160, 112, 212), h: 38, accent: "#eab308" },
+      { id: "OV_5", targetHall: "h5", label: "5号馆", sub: "主舞台 / 创作者见面会 / ZLIVE", poly: rectPoly(598, 160, 112, 212), h: 44, accent: "#eab308" },
+      { id: "OV_LOBBY", targetHall: "h4", label: "东登录厅", sub: "3号口进入分流", poly: [[598, 392], [712, 392], [700, 452], [588, 436]], h: 22, accent: "#f59e0b" },
+      { id: "OV_4", targetHall: "h4", label: "4号馆", sub: "官方展区 + 异业 + 同人区", poly: rotatePoly(rectPoly(542, 468, 116, 200), 600, 568, 16), h: 42, accent: "#eab308" }
+    ];
+
+    // ========= 2. 4号馆官方大区（1:1 官图精确多边形造型） =========
+    const HALL4_ZONES = [
+      { id: "OFF_ACADEMY", hall: "4号馆 · 官方区", kind: "official", tier: "OFF", name: "奥蕾莉亚学院", artists: "官方主题展区（北侧中左）", likes: 0, poster: "posters/official_hall4.webp", tags: ["官方展区", "梯形造型"], chars: "学院主题场景与互动", desc: "位于4号馆上方中左位置（梯形展区），紧邻游乐岛和异业合作区。", d3Note: "逛完游乐岛可顺路北上打卡奥蕾莉亚学院。", poly: [[306, 24], [526, 24], [504, 112], [306, 112]], h: 26 },
+      { id: "OFF_BEIKE", hall: "4号馆 · 官方区", kind: "official", tier: "OFF", name: "贝克福德街", artists: "官方主题街区（北侧中右）", likes: 0, poster: "posters/official_hall4.webp", tags: ["官方街区", "一进馆右手边"], chars: "新艾利都街区复刻", desc: "位于4号馆入口右上方，从东侧入口进馆后最先到达的官方大区之一。", d3Note: "优先逛官方区：进馆趁人少顺手先刷贝克福德街。", poly: [[618, 24], [1028, 24], [1028, 128], [954, 164], [890, 128], [678, 128]], h: 26 },
+      { id: "OFF_ISLAND", hall: "4号馆 · 官方区", kind: "official", tier: "OFF", name: "游乐岛", artists: "官方最大核心互动岛", likes: 0, poster: "posters/official_hall4.webp", tags: ["全场最大官方岛", "八边形倒角", "必排热门"], chars: "嘉年华核心游乐设施与小游戏集章", desc: "4号馆占地最大的八边形官方互动岛！小游戏、集章打卡与互动奖励核心区。", d3Note: "🔥 优先逛官方区建议第一站直奔「游乐岛」，上午人少时先把最耗时的小游戏玩完！", poly: chamferRect(298, 152, 224, 314, 34, 42, 42, 34), h: 26 },
+      { id: "OFF_PARK", hall: "4号馆 · 官方区", kind: "official", tier: "OFF", name: "艾玫尔中央公园", artists: "4号馆正中圆形中心广场", likes: 0, poster: "posters/official_hall4.webp", tags: ["圆形广场", "中心枢纽", "面基地标"], chars: "圆形广场与中心景观装置", desc: "4号馆正中央的标志性圆形广场，四通八达连接全部官方区。", d3Note: "和朋友约面基直接定「艾玫尔中央公园」最方便。", poly: circlePoly(630, 310, 74, 32), isCircle: true, cx: 630, cy: 310, r: 74, h: 16 },
+      { id: "OFF_STATUE", hall: "4号馆 · 官方区", kind: "official", tier: "OFF", name: "布连邦雕像 & 算枢中心", artists: "官方地标雕塑 + 算枢互动区", likes: 0, poster: "posters/official_hall4.webp", tags: ["右凸圆弧复合台", "地标打卡", "官方核心互动"], chars: "巨型邦布雕像 + 算枢中心互动", desc: "位于入口正前方、艾玫尔中央公园东侧的复合体块（上半为布连邦雕像，下半为算枢中心）。", d3Note: "进馆第一眼就能看到，拍完雕像顺手刷算枢中心互动。", poly: statueComplexPoly(), h: 30 },
+      { id: "OFF_GEAR", hall: "4号馆 · 官方区", kind: "official", tier: "OFF", name: "齿轮街", artists: "官方主题街区（南侧左下）", likes: 0, poster: "posters/official_hall4.webp", tags: ["官方街区", "紧邻同人区"], chars: "工业风主题场景", desc: "位于游乐岛正下方，紧挨最左侧同人区。", d3Note: "逛完齿轮街往左走一步即进入同人区（A01–D09）。", poly: chamferRect(298, 504, 222, 96, 0, 32, 0, 0), h: 24 },
+      { id: "OFF_BUSIKANG", hall: "4号馆 · 官方区", kind: "official", tier: "OFF", name: "布司康", artists: "官方主题展区（南侧中下）", likes: 0, poster: "posters/official_hall4.webp", tags: ["官方展区", "南侧中段"], chars: "布梦嘉年华特色体验", desc: "位于4号馆南侧中段，介于齿轮街与焦点剧场之间。", d3Note: "逛完算枢中心/中央公园顺路南下打卡。", poly: chamferRect(606, 516, 206, 84, 32, 0, 0, 0), h: 24 },
+      { id: "OFF_JIAODIAN", hall: "4号馆 · 官方区", kind: "official", tier: "OFF", name: "焦点剧场", artists: "4号馆小舞台/演出区（南侧右下）", likes: 0, poster: "posters/official_hall4.webp", tags: ["剧场互动", "入口右下"], chars: "4号馆内舞台节目", desc: "位于入口右下方，举办场内互动与主题演出。", d3Note: "进馆留意节目单，挑感兴趣的时段提前去占位。", poly: chamferRect(844, 504, 190, 96, 26, 26, 0, 0), h: 28 },
+      { id: "OFF_PARTNER", hall: "4号馆 · 异业合作", kind: "partner", tier: "PARTNER", name: "异业合作区（雅迪/滴滴/支付宝/B站）", artists: "雅迪电动车 / 滴滴出行 / 支付宝 / bilibili only", likes: 1087, poster: "posters/YADEA.webp", tags: ["异业合作", "免费互动领联名周边"], chars: "雅迪联名车牌/Q版吧唧/小卡/骑行三件套", desc: "位于4号馆最左侧上方（官图扇形边界条带北段），含雅迪「欧气调频所」等免费联名互动。", d3Note: "免费联动周边上午货最足，逛完奥蕾莉亚学院顺路领。", poly: chamferRect(34, 42, 212, 134, 26, 12, 12, 8), h: 22 }
+    ];
+
+    // ========= 3. 4号馆同人区 36 摊（统一标准高度 14px，不再高低不平；颜色只标热度等级） =========
+    const DOUJIN_BOOTHS = [
+      { id: "D01", row: 0, col: 3, hall: "4号馆 · 同人区", name: "原汁云喵 × 喵游星辰", artists: "原汁云喵 / 舍舍", tier: "T0", likes: 1664, poster: "posters/D01.webp", tags: ["全网热度第1", "场贩无料", "满赠"], chars: "浅羽悠真、雨果、赛维里安、莱特", desc: "【Velvet Late Hour】同人企划（1664赞），制品/满赠/无料齐全。", d3Note: "关注+❤+⭐+💬摊宣现场领无料（提前截图）。" },
+      { id: "D02", row: 1, col: 3, hall: "4号馆 · 同人区", name: "那个S什么N的（SuperAppleMan & Seseren）", artists: "SuperAppleMan / Seseren", tier: "T0", likes: 856, poster: "posters/D02.webp", tags: ["顶流画师", "29号苹果人生日", "复刻娃娃/挂件"], chars: "苍角、蕾米、希希芙、塞维等娃娃/挂件/亚克力摇摇乐", desc: "SuperAppleMan（856赞）与 Seseren（707赞）双神合摊！新品 + 往期娃娃和挂件复刻，27–29号本人都在场。", d3Note: "🎂 29号（周日）正好是 SuperAppleMan 老师生日！展后有线上，想见本人/抢现货紧邻D01连排。" },
+      { id: "D03", row: 2, col: 3, hall: "4号馆 · 同人区", name: "姬海棠羽笠果 & 一万根韭菜", artists: "姬海棠羽笠果 / 一万根韭菜", tier: "N", likes: 67, poster: "posters/gallery/D03_0.webp", tags: ["合摊", "有制品图"], chars: "同人制品", desc: "D03双画师合摊（一万根韭菜67赞），紧邻D02。", d3Note: "顺路逛。" },
+      { id: "D04", row: 3, col: 3, hall: "4号馆 · 同人区", name: "心跳第七次（七赫兹 & 心脏弱真君）", artists: "七赫兹_SevenHz / 心脏弱真君", tier: "T0", likes: 1062, poster: "posters/gallery/D04_0.webp", tags: ["千赞顶流", "8K插图周边首发", "后续有通贩"], chars: "蕾米埃尔 × 挽昼《循旧时梦》、妄想天使《虹彩甜品》", desc: "🔥 超人气千赞摊（1062赞）！首发《循旧时梦》长发双翼蕾米+挽昼8K复古插图周边，以及《虹彩甜品》企划。", d3Note: "热度破千必排长龙，摊主表示后续也会开通贩。" },
+      { id: "D05", row: 4, col: 3, hall: "4号馆 · 同人区", name: "寰宇诺亚", artists: "寰宇诺亚", tier: "T2", likes: 356, poster: "posters/D05.webp", tags: ["明信片口碑极佳", "五弹摊宣"], chars: "多角色明信片/同人谷", desc: "连发五弹摊宣（最高356赞），明信片系列备受好评。", d3Note: "喜欢明信片的必逛。" },
+      { id: "D06", row: 5, col: 3, hall: "4号馆 · 同人区", name: "ONANA Robotics", artists: "ONANA Robotics", tier: "T1", likes: 486, poster: "posters/gallery/D06_0.webp", tags: ["高人气摊", "486赞"], chars: "绝区零同人制品", desc: "小红书高赞参展摊位（486赞），位于D区中段。", d3Note: "在D05和D07之间，逛D区顺路必看。" },
+      { id: "D07", row: 6, col: 3, hall: "4号馆 · 同人区", name: "新艾利都小猫批发商", artists: "西瓜啵啵好喝", tier: "T1", likes: 395, poster: "posters/D07.webp", tags: ["设计口碑极高"], chars: "多角色吧唧/创意背卡", desc: "吧唧背卡设计口碑爆棚（395赞）。", d3Note: "尚未明确通贩时间，喜欢建议直接拿下。" },
+      { id: "D08", row: 7, col: 3, hall: "4号馆 · 同人区", name: "哈米伦的弄笛者", artists: "哈米伦的弄笛者", tier: "T2", likes: 200, poster: null, tags: ["知名二创大佬"], chars: "二创制品", desc: "米游圈知名二创大佬摊位。", d3Note: "紧邻D09顺路看。" },
+      { id: "D09", row: 8, col: 3, hall: "4号馆 · 同人区", name: "邦布帮 & KKOMDA", artists: "邦布帮 / KKOMDA", tier: "T0", likes: 1274, poster: "posters/D09.webp", tags: ["顶流必冲", "满赠印章", "打卡无料"], chars: "安比手偶、法厄同/关心款毛毯、生日会周边", desc: "热度断层顶流（1274+464赞）！满¥100送KV海报+方卡；满¥150加赠角色棋子印章；拍3张返图@邦布帮送电影花絮卡。", d3Note: "制品展后八木百货通贩，但现场满赠和打卡无料抢手！" },
+
+      { id: "C01", row: 0, col: 2, hall: "4号馆 · 同人区", name: "鱼爸养生小铺", artists: "鱼爸养生小铺", tier: "N", likes: 0, poster: null, tags: ["同人摊"], chars: "多角色", desc: "画风口碑很好的同人摊。", d3Note: "顺路逛。" },
+      { id: "C02", row: 1, col: 2, hall: "4号馆 · 同人区", name: "可爱公馆 & Thoyadoggy", artists: "可爱公馆 / Thoyadoggy", tier: "T2", likes: 287, poster: "posters/gallery/C02_0.webp", tags: ["人气合摊", "287赞"], chars: "多角色同人制品", desc: "双社团人气合摊（Thoyadoggy 287赞）。", d3Note: "逛C区顺路看。" },
+      { id: "C03", row: 2, col: 2, hall: "4号馆 · 同人区", name: "CAISENA", artists: "CAISENA", tier: "N", likes: 0, poster: null, tags: ["个人摊"], chars: "同人制品", desc: "C区个人摊。", d3Note: "紧邻C04。" },
+      { id: "C04", row: 3, col: 2, hall: "4号馆 · 同人区", name: "零时钟点工 & 白面包裹小黑猫", artists: "零时钟点工 / 白面包裹小黑猫", tier: "T1", likes: 565, poster: "posters/C04.webp", tags: ["满赠不补", "仅余量通贩"], chars: "妄想天使系列、兄妹俩、吱吱叫包挂", desc: "三天全勤大热摊（565赞），妄想天使与兄妹系列。", d3Note: "部分谷子和满赠售完不补，想吃满赠建议早冲！" },
+      { id: "C05", row: 4, col: 2, hall: "4号馆 · 同人区", name: "娃娃菜特供粥铺", artists: "高山娃娃菜 / 阿粥", tier: "T1", likes: 486, poster: "posters/C05.webp", tags: ["满赠互通", "仅余量通贩"], chars: "雨果等热门角色", desc: "两社团满赠可合并累计！去年现场被抢爆。", d3Note: "展后仅余量上架，D3优先度高。" },
+      { id: "C06", row: 5, col: 2, hall: "4号馆 · 同人区", name: "-saske-", artists: "-saske-", tier: "N", likes: 0, poster: null, tags: ["个人摊"], chars: "同人制品", desc: "位于C05和C07之间。", d3Note: "顺路看。" },
+      { id: "C07", row: 6, col: 2, hall: "4号馆 · 同人区", name: "一生的请求", artists: "奥奥orsat / VIA石楠", tier: "T1", likes: 575, poster: "posters/C07.webp", tags: ["场贩无料", "满赠", "3天全勤"], chars: "赛维里安、蕾米、雨果、叶瞬光、莱特、薇薇安、悠真", desc: "高人气全勤合摊（575赞），角色覆盖超全。", d3Note: "关注+三连+评论领场贩限定物料（提前截图）。" },
+      { id: "C08", row: 7, col: 2, hall: "4号馆 · 同人区", name: "花久花酒", artists: "花久花酒", tier: "N", likes: 0, poster: null, tags: ["个人摊"], chars: "同人制品", desc: "C区同人摊。", d3Note: "顺路逛。" },
+      { id: "C09", row: 8, col: 2, hall: "4号馆 · 同人区", name: "中午起床 & 小鸟软糖", artists: "中午起床 / 小鸟软糖", tier: "T2", likes: 292, poster: "posters/C09.webp", tags: ["人气合摊", "终宣菜单"], chars: "同人制品", desc: "参展摊宣292赞+终宣菜单113赞，紧邻D09。", d3Note: "逛完D09顺路看。" },
+
+      { id: "B01", row: 0, col: 1, hall: "4号馆 · 同人区", name: "摸鱼的契约叔 & 狗空", artists: "摸鱼的契约叔 / 狗空不是米吹", tier: "T2", likes: 292, poster: "posters/B01.webp", tags: ["热门无料"], chars: "实用向无料/同人", desc: "「最实用的无料」爆火贴摊主（292赞）。", d3Note: "想换无料建议早去。" },
+      { id: "B02", row: 1, col: 1, hall: "4号馆 · 同人区", name: "7人大型合摊", artists: "鱼芝士 / 雪饼不是仙贝 / 德黑兰潜水灵芝等7人", tier: "T2", likes: 355, poster: "posters/B02.webp", tags: ["7人超大型合摊"], chars: "全员向/多角色", desc: "全馆人数最多的豪华合摊之一（鱼芝士355赞等）。", d3Note: "品类极多，提前看好菜单。" },
+      { id: "B03", row: 2, col: 1, hall: "4号馆 · 同人区", name: "翎山重工 & 世界遗忘我", artists: "翎山重工 / 世界遗忘我", tier: "T1", likes: 489, poster: "posters/B03.webp", tags: ["高人气摊", "489赞"], chars: "多角色制品", desc: "翎山重工参展摊宣489赞，连发三弹制作精良。", d3Note: "在B02和B04之间，动线极顺。" },
+      { id: "B04", row: 3, col: 1, hall: "4号馆 · 同人区", name: "猫毛过敏中心", artists: "艾比里德尔 / 一打柯基 / -茗明竹-", tier: "T1", likes: 608, poster: "posters/B04.webp", tags: ["超高人气", "仅余量通贩"], chars: "蕾米埃尔、薇薇安、千夏、小挽昼等", desc: "T1级热门社团合摊（608赞），实拍口碑极佳。", d3Note: "展后仅余量通贩，热门角色建议优先去。" },
+      { id: "B05", row: 4, col: 1, hall: "4号馆 · 同人区", name: "一般路过的同人女 & 五万五", artists: "一般路过的同人女 / 五万五", tier: "T2", likes: 200, poster: null, tags: ["社区热门"], chars: "热门角色", desc: "汇总贴特别标注的热门摊。", d3Note: "B区中段人流密集。" },
+      { id: "B06", row: 5, col: 1, hall: "4号馆 · 同人区", name: "Level 咖啡厅", artists: "染式咖啡", tier: "T1", likes: 480, poster: "posters/B06.webp", tags: ["邦布盲抽", "展后有通贩"], chars: "全系列邦布冰箱贴", desc: "新款「邦布冰箱贴盲抽」人气爆棚（480赞），三天全勤。", d3Note: "展后会开通贩，排太长可等线上。" },
+      { id: "B07", row: 6, col: 1, hall: "4号馆 · 同人区", name: "旅涂剧社等5人合摊", artists: "旅涂剧社 / 麻瓜佐 / カケルKKR 等5人", tier: "N", likes: 55, poster: "posters/B07.webp", tags: ["5人合摊"], chars: "多角色", desc: "五人合摊，品类丰富。", d3Note: "与B08连摊。" },
+      { id: "B08", row: 7, col: 1, hall: "4号馆 · 同人区", name: "旅涂剧社等4人合摊", artists: "旅涂剧社 / yuyiosang / 黑特 / YAN034", tier: "N", likes: 21, poster: "posters/gallery/B08_0.webp", tags: ["4人合摊", "有制品图"], chars: "多角色", desc: "旅涂剧社B08三弹摊宣，与B07连摊。", d3Note: "顺路逛。" },
+      { id: "B09", row: 8, col: 1, hall: "4号馆 · 同人区", name: "徐萌萌", artists: "徐萌萌卖谷养猫纯米家", tier: "T2", likes: 380, poster: "posters/gallery/B09_0.webp", tags: ["表格大神", "380赞"], chars: "同人制品 & 角色查询表", desc: "全网绝区零FES同人制品整合&角色查询表作者摊位（380赞）！", d3Note: "顺路支持老师。" },
+
+      { id: "A01", row: 0, col: 0, hall: "4号馆 · 同人区", name: "万谷丰登", artists: "万谷丰登", tier: "T2", likes: 276, poster: "posters/A01.webp", tags: ["人气摊"], chars: "全员/热门角色", desc: "小红书高赞正式摊宣（276赞）。", d3Note: "A区首位摊位。" },
+      { id: "A02", row: 1, col: 0, hall: "4号馆 · 同人区", name: "甲板下的鸽子窝", artists: "甲板下的鸽子窝", tier: "N", likes: 0, poster: null, tags: ["同人摊"], chars: "同人制品", desc: "A区同人摊。", d3Note: "顺路逛。" },
+      { id: "A03", row: 2, col: 0, hall: "4号馆 · 同人区", name: "淬火社 & 四色绮想", artists: "淬火社 / 4C-Fantasy", tier: "N", likes: 0, poster: null, tags: ["合摊"], chars: "多角色", desc: "双社团合摊。", d3Note: "顺路打卡。" },
+      { id: "A04", row: 3, col: 0, hall: "4号馆 · 同人区", name: "薯粉泥 & 方person也", artists: "薯粉泥 / 方person也", tier: "T0", likes: 827, poster: "posters/gallery/A04_0.webp", tags: ["827赞顶流", "完整制品菜单"], chars: "绝区零人气角色多款制品", desc: "🔥 A区隐藏大热门（827赞）！详细制品菜单已放出（右侧可翻看5张高清菜单图）。", d3Note: "人气超预期，A区建议与A05/A07/A09一起优先刷。" },
+      { id: "A05", row: 4, col: 0, hall: "4号馆 · 同人区", name: "凉夏 / 珂珂希尔 / YUYA", artists: "-凉夏- / 珂珂希尔 / YUYA🐟", tier: "T1", likes: 464, poster: "posters/gallery/A05_0.webp", tags: ["3人合摊", "464赞", "完整菜单"], chars: "多角色制品菜单", desc: "高人气三人合摊（YUYA 464赞），右侧可翻看5张完整制品菜单图。", d3Note: "紧邻A04，可顺路连逛。" },
+      { id: "A06", row: 5, col: 0, hall: "4号馆 · 同人区", name: "猫猫头工作室", artists: "猫猫头工作室", tier: "N", likes: 13, poster: "posters/gallery/A06_0.webp", tags: ["工作室", "有摊宣图"], chars: "同人周边", desc: "同人工作室摊位，位于A05和A07之间。", d3Note: "顺路逛。" },
+      { id: "A07", row: 6, col: 0, hall: "4号馆 · 同人区", name: "三分甜麦麦薯饼", artists: "有猫饼同人社 / 三甜 / 麦O劳美味大汉堡", tier: "T0", likes: 916, poster: "posters/A07.webp", tags: ["916赞顶流", "首发", "3人合摊"], chars: "挽昼、蕾米、悠真、莱特等24角色", desc: "三人超人气合摊（麦O劳916赞 + 有猫饼470赞）！首发【动物凶萌5.0】、挽昼四插大立牌、24角色毛毡板。", d3Note: "想买首发立牌和毛毡板建议早排。" },
+      { id: "A08", row: 7, col: 0, hall: "4号馆 · 同人区", name: "摩卡北北 & 大碗茶", artists: "摩卡北北 / 仙家严选大碗茶", tier: "N", likes: 21, poster: "posters/gallery/A08_0.webp", tags: ["合摊", "六弹菜单"], chars: "多款制品菜单", desc: "摩卡北北连发六弹制品菜单，紧邻A07和A09。", d3Note: "排A07/A09时顺路看。" },
+      { id: "A09", row: 8, col: 0, hall: "4号馆 · 同人区", name: "冰镇H2O等4人合摊", artists: "冰镇H2O / 殇雪笙桃 / 歆麦why / 夜离", tier: "T1", likes: 419, poster: "posters/A09.webp", tags: ["扫码点单", "满赠不拆天"], chars: "浅羽悠真、哲、莱特、雨果等", desc: "四位高人气画师合摊（419+346赞），支持现场扫码线上点单。", d3Note: "满赠不按天拆分、送完即止，D3务必周六晚确认余量！" }
+    ].map(b => ({
+      ...b,
+      kind: "doujin",
+      h: 14, // 全部同人摊统一标准高度，整齐还原真实展台！
+      poly: rectPoly(36 + b.col * 53, 200 + b.row * 44, 46, 36)
+    }));
+
+    // ========= 4. 5号馆（按 m_hall5.png 精确布局） =========
+    const HALL5_ZONES = [
+      { id: "H5_STAGE", hall: "5号馆 · 舞台/ZLIVE", kind: "official", tier: "OFF", name: "舞台区（Zenless LIVE 主舞台）", artists: "白天舞台活动 / 晚间 17:30–22:00 ZLIVE", likes: 0, poster: "posters/official_venue.webp", tags: ["半圆主舞台", "创作者见面会", "ZLIVE专场"], chars: "主舞台演出 & 嘉宾互动", desc: "位于5号馆最左侧的弧形主舞台区。", d3Note: "晚场 ZLIVE 17:30 开始，白天有创作者见面会。", poly: circlePoly(145, 310, 128, 28), h: 30 },
+      { id: "H5_VIP", hall: "5号馆 · 舞台/ZLIVE", kind: "official", tier: "OFF", name: "内场观众席（VIP 5区）", artists: "内场席 / 套票内场", likes: 0, poster: "posters/official_venue.webp", tags: ["内场VIP", "离舞台最近"], chars: "5块内场坐席", desc: "紧邻主舞台的内场 VIP 观众席区。", d3Note: "内场票按票面区域对号入座。", poly: rectPoly(315, 130, 270, 360), h: 16 },
+      { id: "H5_STD", hall: "5号馆 · 舞台/ZLIVE", kind: "official", tier: "OFF", name: "普通观众席（3区）", artists: "普通席", likes: 0, poster: "posters/official_venue.webp", tags: ["普通观众席"], chars: "3块普通坐席", desc: "位于内场后方的普通观众席。", d3Note: "从右侧入口进馆直达。", poly: rectPoly(620, 130, 210, 360), h: 16 },
+      { id: "H5_STAND_T", hall: "5号馆 · 舞台/ZLIVE", kind: "official", tier: "OFF", name: "北侧看台观众席", artists: "看台席", likes: 0, poster: "posters/official_venue.webp", tags: ["看台席"], chars: "高视角看台", desc: "5号馆北侧阶梯看台。", d3Note: "视野开阔无遮挡。", poly: rectPoly(315, 42, 520, 56), h: 28 },
+      { id: "H5_STAND_B", hall: "5号馆 · 舞台/ZLIVE", kind: "official", tier: "OFF", name: "南侧看台观众席", artists: "看台席", likes: 0, poster: "posters/official_venue.webp", tags: ["看台席"], chars: "高视角看台", desc: "5号馆南侧阶梯看台。", d3Note: "视野开阔无遮挡。", poly: rectPoly(315, 522, 520, 56), h: 28 },
+      { id: "H5_STAND_R", hall: "5号馆 · 舞台/ZLIVE", kind: "official", tier: "OFF", name: "东侧看台观众席", artists: "看台席（入口旁）", likes: 0, poster: "posters/official_venue.webp", tags: ["东看台"], chars: "正对舞台看台", desc: "位于入口内侧正对舞台的看台席。", d3Note: "正对主舞台居中视角。", poly: rectPoly(862, 130, 74, 360), h: 26 }
+    ];
+
+    // ========= 5. 6号馆（按 m_hall6.png 精确布局） =========
+    const HALL6_ZONES = [
+      { id: "H6_SHOP", hall: "6号馆 · 官方周边", kind: "official", tier: "OFF", name: "官方周边贩售区", artists: "场贩购买与核销提货", likes: 0, poster: "posters/official_venue.webp", tags: ["官方周边贩售"], chars: "FES & ZLIVE 官方周边", desc: "位于6号馆最左侧的大型官方周边贩售区。", d3Note: "按线上预约资格/现场指引核销购买。", poly: chamferRect(110, 140, 350, 340, 14, 14, 14, 14), h: 28 },
+      { id: "H6_QUEUE", hall: "6号馆 · 官方周边", kind: "official", tier: "OFF", name: "队列区", artists: "官方周边蛇形排队区", likes: 0, poster: "posters/official_venue.webp", tags: ["排队缓冲区"], chars: "分时段候场队列", desc: "位于休息区与贩售区之间的官方排队队列区。", d3Note: "听从现场工作人员分批放行。", poly: chamferRect(510, 160, 195, 300, 12, 12, 12, 12), h: 16 },
+      { id: "H6_REST", hall: "6号馆 · 官方周边", kind: "official", tier: "OFF", name: "休息区", artists: "6号馆场内休息区", likes: 0, poster: "posters/official_venue.webp", tags: ["休息补给"], chars: "逛累了可在此休整", desc: "位于6号馆入口内侧的休息区。", d3Note: "从右侧入口进馆最先经过休息区。", poly: chamferRect(755, 175, 135, 270, 12, 12, 12, 12), h: 16 }
+    ];
+
+    const GALLERY_MAP = {"A01": ["posters/gallery/A01_0.webp", "posters/gallery/A01_1.webp", "posters/gallery/A01_2.webp", "posters/gallery/A01_3.webp", "posters/gallery/A01_4.webp"], "A04": ["posters/gallery/A04_0.webp", "posters/gallery/A04_1.webp", "posters/gallery/A04_2.webp", "posters/gallery/A04_3.webp", "posters/gallery/A04_4.webp"], "A05": ["posters/gallery/A05_0.webp", "posters/gallery/A05_1.webp", "posters/gallery/A05_2.webp", "posters/gallery/A05_3.webp", "posters/gallery/A05_4.webp"], "A06": ["posters/gallery/A06_0.webp"], "A07": ["posters/gallery/A07_0.webp", "posters/gallery/A07_1.webp", "posters/gallery/A07_2.webp", "posters/gallery/A07_3.webp", "posters/gallery/A07_4.webp"], "A08": ["posters/gallery/A08_0.webp", "posters/gallery/A08_1.webp"], "A09": ["posters/gallery/A09_0.webp", "posters/gallery/A09_1.webp", "posters/gallery/A09_2.webp", "posters/gallery/A09_3.webp", "posters/gallery/A09_4.webp"], "B01": ["posters/gallery/B01_0.webp"], "B02": ["posters/gallery/B02_0.webp", "posters/gallery/B02_1.webp"], "B03": ["posters/gallery/B03_0.webp", "posters/gallery/B03_1.webp", "posters/gallery/B03_2.webp", "posters/gallery/B03_3.webp"], "B04": ["posters/gallery/B04_0.webp", "posters/gallery/B04_1.webp", "posters/gallery/B04_2.webp", "posters/gallery/B04_3.webp", "posters/gallery/B04_4.webp"], "B06": ["posters/gallery/B06_0.webp", "posters/gallery/B06_1.webp", "posters/gallery/B06_2.webp"], "B07": ["posters/gallery/B07_0.webp", "posters/gallery/B07_1.webp"], "B08": ["posters/gallery/B08_0.webp"], "B09": ["posters/gallery/B09_0.webp", "posters/gallery/B09_1.webp", "posters/gallery/B09_2.webp"], "C02": ["posters/gallery/C02_0.webp", "posters/gallery/C02_1.webp", "posters/gallery/C02_2.webp"], "C04": ["posters/gallery/C04_0.webp", "posters/gallery/C04_1.webp", "posters/gallery/C04_2.webp", "posters/gallery/C04_3.webp", "posters/gallery/C04_4.webp"], "C05": ["posters/gallery/C05_0.webp", "posters/gallery/C05_1.webp", "posters/gallery/C05_2.webp"], "C07": ["posters/gallery/C07_0.webp", "posters/gallery/C07_1.webp", "posters/gallery/C07_2.webp", "posters/gallery/C07_3.webp", "posters/gallery/C07_4.webp"], "C09": ["posters/gallery/C09_0.webp", "posters/gallery/C09_1.webp", "posters/gallery/C09_2.webp", "posters/gallery/C09_3.webp", "posters/gallery/C09_4.webp"], "D01": ["posters/gallery/D01_0.webp", "posters/gallery/D01_1.webp", "posters/gallery/D01_2.webp", "posters/gallery/D01_3.webp", "posters/gallery/D01_4.webp"], "D02": ["posters/gallery/D02_0.webp", "posters/gallery/D02_1.webp"], "D03": ["posters/gallery/D03_0.webp"], "D04": ["posters/gallery/D04_0.webp", "posters/gallery/D04_1.webp"], "D05": ["posters/gallery/D05_0.webp", "posters/gallery/D05_1.webp", "posters/gallery/D05_2.webp", "posters/gallery/D05_3.webp"], "D06": ["posters/gallery/D06_0.webp", "posters/gallery/D06_1.webp"], "D07": ["posters/gallery/D07_0.webp", "posters/gallery/D07_1.webp"], "D09": ["posters/gallery/D09_0.webp", "posters/gallery/D09_1.webp", "posters/gallery/D09_2.webp", "posters/gallery/D09_3.webp", "posters/gallery/D09_4.webp"]};
+
+    const ALL_CLICKABLES = [...HALL4_ZONES, ...DOUJIN_BOOTHS, ...HALL5_ZONES, ...HALL6_ZONES].map(item => ({
+      ...item,
+      gallery: GALLERY_MAP[item.id] || (item.poster ? [item.poster] : [])
+    }));
+
+    const canvas = document.getElementById("mapCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let currentHall = "h4"; // overview | h4 | h5 | h6
+    let mode = "3d";
+    let activeFilter = "all";
+    let searchQuery = "";
+    let selectedId = null;
+    let hoveredId = null;
+    let starred = new Set(JSON.parse(localStorage.getItem("zzz_fes_d3_plan_v3") || '["OFF_ISLAND","OFF_BEIKE","D01","D09"]'));
+    let view = { x: 0, y: 0, scale: 0.85 };
+    let needsDraw = false;
+
+    function getWorldCenter() {
+      if (currentHall === "overview") return { x: 460, y: 390 };
+      return { x: 560, y: 315 };
+    }
+
+    function project(wx, wy, wz = 0) {
+      const c = getWorldCenter();
+      const cx = canvas.clientWidth / 2 + view.x;
+      const cy = canvas.clientHeight / 2 + view.y;
+      const rx = wx - c.x;
+      const ry = wy - c.y;
+      if (mode === "2d") {
+        return { x: cx + rx * view.scale, y: cy + ry * view.scale };
+      }
+      const isoX = (rx - ry) * 0.866;
+      const isoY = (rx + ry) * 0.45 - wz * 1.15;
+      return { x: cx + isoX * view.scale, y: cy + isoY * view.scale };
+    }
+
+    function polyCentroid(pts) {
+      let sx = 0, sy = 0;
+      for (const [x, y] of pts) { sx += x; sy += y; }
+      return [sx / pts.length, sy / pts.length];
+    }
+
+    function getPalette() {
+      const isLight = document.documentElement.classList.contains("light") ||
+        (getComputedStyle(document.body).backgroundColor && (() => {
+          const m = getComputedStyle(document.body).backgroundColor.match(/\d+/g);
+          if (!m) return false;
+          return (+m[0] * 0.299 + +m[1] * 0.587 + +m[2] * 0.114) > 140;
+        })());
+      if (isLight) {
+        return {
+          bg: "#e7eef0", slabTop: "#f4f6f8", slabLeft: "#cbd5e1", slabRight: "#b4c1d0",
+          wallTop: "#e2e8f0", wallLeft: "#cbd5e1", wallRight: "#94a3b8",
+          pad: "#e8edf3", boothTop: "#ffffff", boothLeft: "#dce3ec", boothRight: "#c3cedc",
+          officialTop: "#fefce8", officialLeft: "#e5dec3", officialRight: "#cfc5a3",
+          stroke: "#cbd5e1", shadow: "rgba(15,23,42,0.13)", text: "#1e293b", subText: "#64748b"
+        };
+      }
+      return {
+        bg: "#12161d", slabTop: "#1c222d", slabLeft: "#141922", slabRight: "#0f131a",
+        wallTop: "#2b3444", wallLeft: "#202736", wallRight: "#171d28",
+        pad: "#171d27", boothTop: "#263040", boothLeft: "#1c2432", boothRight: "#141a24",
+        officialTop: "#2d323e", officialLeft: "#222630", officialRight: "#181b23",
+        stroke: "#3b475c", shadow: "rgba(0,0,0,0.40)", text: "#e2e8f0", subText: "#94a3b8"
+      };
+    }
+
+    function tierAccent(tier) {
+      if (tier === "OFF") return "#eab308";
+      if (tier === "PARTNER") return "#10b981";
+      if (tier === "T0") return "#ef4444";
+      if (tier === "T1") return "#f59e0b";
+      if (tier === "T2") return "#3b82f6";
+      return null;
+    }
+
+    function matchesFilter(b) {
+      if (activeFilter === "official" && b.kind !== "official" && b.kind !== "partner") return false;
+      if (activeFilter === "T0" && b.tier !== "T0") return false;
+      if (activeFilter === "T1" && b.tier !== "T1") return false;
+      if (activeFilter === "starred" && !starred.has(b.id)) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const hay = `${b.id} ${b.hall} ${b.name} ${b.artists} ${b.chars} ${b.tags.join(" ")} ${b.desc}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    }
+
+    function drawPoly(pts, fill, stroke, lw = 1) {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+      if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+      if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+    }
+
+    // 通用任意多边形 3D 建筑灰模挤出函数（支持八边形、圆形、圆弧复合体、旋转矩形）
+    function drawPrism(worldPts, h, colors, options = {}) {
+      const bot = worldPts.map(([x, y]) => project(x, y, 0));
+      const [cx, cy] = polyCentroid(worldPts);
+
+      if (mode === "2d") {
+        if (options.shadow) {
+          drawPoly(bot.map(p => ({ x: p.x + 2, y: p.y + 3 })), colors.shadow);
+        }
+        drawPoly(bot, colors.top, colors.stroke, options.strokeWidth || 1.2);
+        return { topCenter: project(cx, cy, 0), hitPoly: bot };
+      }
+
+      const top = worldPts.map(([x, y]) => project(x, y, h));
+
+      // 地面建筑斜影
+      if (options.shadow) {
+        const sh = h * 0.42;
+        const shPts = worldPts.map(([x, y]) => project(x + sh, y + sh * 0.55, 0));
+        drawPoly(shPts, colors.shadow);
+      }
+
+      // 仅绘制朝向摄像机（东南方向：法线 nx + ny > 0）的侧面
+      for (let i = 0; i < worldPts.length; i++) {
+        const j = (i + 1) % worldPts.length;
+        const [x1, y1] = worldPts[i], [x2, y2] = worldPts[j];
+        const dx = x2 - x1, dy = y2 - y1;
+        // 顺时针多边形外法线为 (dy, -dx)
+        const nx = dy, ny = -dx;
+        if (nx + ny > 0) {
+          const shade = nx > ny ? colors.right : colors.left;
+          drawPoly([bot[i], bot[j], top[j], top[i]], shade, colors.stroke, 0.7);
+        }
+      }
+
+      // 顶面
+      drawPoly(top, colors.top, colors.stroke, options.strokeWidth || 1.1);
+      return { topCenter: project(cx, cy, h), hitPoly: top };
+    }
+
+    function drawPin(sx, sy, color = "#ec4899") {
+      ctx.save();
+      ctx.translate(sx, sy - 6);
+      ctx.beginPath();
+      ctx.ellipse(0, 6, 7, 3.5, 0, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(0,0,0,0.34)";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, 5);
+      ctx.bezierCurveTo(-13, -8, -14, -24, 0, -24);
+      ctx.bezierCurveTo(14, -24, 13, -8, 0, 5);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, -13, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.restore();
+    }
+
+    let hitTargets = [];
+
+    function drawOverview(pal) {
+      // 道路底纹（会展北路 / 中环路 / 会展南路）
+      const rN = [project(80, 70), project(860, 120), project(860, 146), project(80, 96)];
+      const rS = [project(80, 665), project(780, 695), project(780, 720), project(80, 690)];
+      const rE = [project(760, 60), project(815, 60), project(725, 730), project(670, 730)];
+      drawPoly(rN, pal.pad);
+      drawPoly(rS, pal.pad);
+      drawPoly(rE, pal.pad);
+
+      // 按 (cx + cy) 排序绘制建筑灰模
+      const sorted = [...OVERVIEW_HALLS].sort((a, b) => {
+        const [ax, ay] = polyCentroid(a.poly), [bx, by] = polyCentroid(b.poly);
+        return (ax + ay) - (bx + by);
+      });
+
+      for (const h of sorted) {
+        const isHov = hoveredId === h.id;
+        const colors = h.bgOnly
+          ? { top: pal.pad, left: pal.slabLeft, right: pal.slabRight, stroke: pal.stroke, shadow: pal.shadow }
+          : { top: isHov ? "#eab308" : pal.officialTop, left: pal.officialLeft, right: pal.officialRight, stroke: h.accent, shadow: pal.shadow };
+
+        const res = drawPrism(h.poly, h.h, colors, { shadow: true, strokeWidth: h.bgOnly ? 0.9 : 2 });
+        if (h.label) {
+          ctx.textAlign = "center";
+          ctx.fillStyle = h.bgOnly ? pal.subText : (isHov ? "#111827" : pal.text);
+          ctx.font = `800 ${Math.max(11, Math.round((h.bgOnly ? 13 : 15) * view.scale))}px system-ui, sans-serif`;
+          ctx.fillText(h.label, res.topCenter.x, res.topCenter.y + 2);
+          if (h.sub && view.scale > 0.65) {
+            ctx.fillStyle = isHov ? "#1f2937" : pal.subText;
+            ctx.font = `500 ${Math.max(9, Math.round(10.5 * view.scale))}px system-ui, sans-serif`;
+            ctx.fillText(h.sub, res.topCenter.x, res.topCenter.y + 18);
+          }
+        }
+        if (!h.bgOnly) {
+          hitTargets.push({ overviewTarget: h.targetHall, id: h.id, poly: res.hitPoly });
+        }
+      }
+
+      // 地铁 1 号线港城大道站 B/C口 → 3号口指引
+      const mPos = project(845, 425, 0);
+      ctx.fillStyle = "#10b981";
+      ctx.font = `700 ${Math.max(11, Math.round(13 * view.scale))}px system-ui, sans-serif`;
+      ctx.textAlign = "left";
+      ctx.fillText("🚇 地铁1号线 · 港城大道站 B/C口", mPos.x, mPos.y);
+      ctx.fillStyle = pal.subText;
+      ctx.font = `500 ${Math.max(10, Math.round(11 * view.scale))}px system-ui, sans-serif`;
+      ctx.fillText("◀ 经 3号口 → 东登录厅入场（点击黄色展馆进入内部）", mPos.x, mPos.y + 18);
+    }
+
+    function drawHallInterior(pal, zones, title, entranceText) {
+      // 主展馆底板 + 建筑外墙
+      drawPrism(rectPoly(0, 0, 1140, 624), 10, {
+        top: pal.slabTop, left: pal.slabLeft, right: pal.slabRight, stroke: pal.stroke, shadow: pal.shadow
+      }, { shadow: true });
+
+      if (mode === "3d") {
+        drawPrism(rectPoly(0, 0, 1140, 12), 34, { top: pal.wallTop, left: pal.wallLeft, right: pal.wallRight, stroke: pal.stroke });
+        drawPrism(rectPoly(0, 12, 12, 612), 26, { top: pal.wallTop, left: pal.wallLeft, right: pal.wallRight, stroke: pal.stroke });
+      }
+
+      // 4号馆特殊底纹：最左侧同人区底垫 + 右侧入口棋盘格门柱
+      if (currentHall === "h4") {
+        drawPoly(rectPoly(24, 188, 228, 420).map(([x, y]) => project(x, y, mode === "3d" ? 10.5 : 0)), pal.pad, pal.stroke, 1);
+        // 中心圆形广场外环装饰线
+        const ring = circlePoly(630, 310, 92, 32).map(([x, y]) => project(x, y, mode === "3d" ? 10.4 : 0));
+        drawPoly(ring, null, pal.stroke, 1.2);
+      }
+
+      // 东侧入口标注
+      const ent = project(1086, 312, mode === "3d" ? 12 : 0);
+      ctx.fillStyle = "#eab308";
+      ctx.font = `800 ${Math.max(11, Math.round(13 * view.scale))}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(entranceText, ent.x, ent.y);
+
+      const sorted = [...zones].sort((a, b) => {
+        const [ax, ay] = polyCentroid(a.poly), [bx, by] = polyCentroid(b.poly);
+        return (ax + ay) - (bx + by);
+      });
+
+      let selectedPinPos = null;
+
+      for (const item of sorted) {
+        const vis = matchesFilter(item);
+        const isSel = selectedId === item.id;
+        const isHov = hoveredId === item.id;
+        const isStar = starred.has(item.id);
+        const accent = tierAccent(item.tier);
+        const isOff = item.kind === "official";
+
+        ctx.save();
+        if (!vis) ctx.globalAlpha = 0.2;
+
+        const topFill = isSel
+          ? (accent || "#3b82f6")
+          : isHov
+            ? pal.wallTop
+            : isOff
+              ? pal.officialTop
+              : pal.boothTop;
+
+        const res = drawPrism(item.poly, item.h, {
+          top: topFill,
+          left: isOff ? pal.officialLeft : pal.boothLeft,
+          right: isOff ? pal.officialRight : pal.boothRight,
+          stroke: isSel ? "#ffffff" : (accent || pal.stroke),
+          shadow: pal.shadow
+        }, { shadow: true, strokeWidth: isSel ? 2.2 : (accent ? 1.8 : 0.9) });
+
+        // 游乐岛内部中庭细节 & 艾玫尔中央公园中心圆环细节
+        if (item.id === "OFF_PARK") {
+          const inner = circlePoly(630, 310, 26, 20).map(([x, y]) => project(x, y, mode === "3d" ? item.h + 0.8 : 0));
+          drawPoly(inner, pal.slabTop, accent, 1.5);
+        }
+
+        ctx.textAlign = "center";
+        if (item.kind !== "doujin") {
+          const fs = Math.max(10, Math.round(13 * view.scale));
+          ctx.fillStyle = isSel ? "#ffffff" : pal.text;
+          ctx.font = `800 ${fs}px system-ui, sans-serif`;
+          ctx.fillText(`${item.name.split("（")[0]}${isStar ? " ★" : ""}`, res.topCenter.x, res.topCenter.y + 3);
+        } else {
+          // 同人摊：整齐灰模 + 热度小圆点 + 摊位号
+          const fs = Math.max(8, Math.round(9.5 * view.scale));
+          ctx.fillStyle = isSel ? "#ffffff" : pal.text;
+          ctx.font = `800 ${fs}px ui-monospace, monospace`;
+          ctx.fillText(`${item.id}${isStar ? "★" : ""}`, res.topCenter.x, res.topCenter.y + (view.scale > 1.05 ? -1 : 3));
+          if (view.scale > 1.05) {
+            ctx.fillStyle = isSel ? "rgba(255,255,255,0.9)" : pal.subText;
+            ctx.font = `500 ${Math.max(8, Math.round(8.2 * view.scale))}px system-ui, sans-serif`;
+            const sn = item.name.length > 4 ? item.name.slice(0, 4) + "…" : item.name;
+            ctx.fillText(sn, res.topCenter.x, res.topCenter.y + fs);
+          }
+          // 热度颜色圆点（清晰直观，不再用柱高区分）
+          if (accent && !isSel) {
+            const [cx, cy] = polyCentroid(item.poly);
+            const dp = project(cx + 15, cy - 11, mode === "3d" ? item.h + 0.8 : 0);
+            ctx.beginPath();
+            ctx.arc(dp.x, dp.y, Math.max(2.6, 3.2 * view.scale), 0, Math.PI * 2);
+            ctx.fillStyle = accent;
+            ctx.fill();
+          }
+        }
+
+        ctx.restore();
+        hitTargets.push({ item, poly: res.hitPoly });
+        if (isSel) selectedPinPos = res.topCenter;
+      }
+
+      if (selectedPinPos) {
+        drawPin(selectedPinPos.x, selectedPinPos.y - 6, "#ec4899");
+      }
+    }
+
+    function draw() {
+      needsDraw = false;
+      const dpr = window.devicePixelRatio || 1;
+      const cw = canvas.clientWidth;
+      const ch = canvas.clientHeight;
+      if (canvas.width !== Math.round(cw * dpr) || canvas.height !== Math.round(ch * dpr)) {
+        canvas.width = Math.round(cw * dpr);
+        canvas.height = Math.round(ch * dpr);
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const pal = getPalette();
+      ctx.fillStyle = pal.bg;
+      ctx.fillRect(0, 0, cw, ch);
+
+      hitTargets = [];
+      if (currentHall === "overview") {
+        drawOverview(pal);
+      } else if (currentHall === "h4") {
+        drawHallInterior(pal, [...HALL4_ZONES, ...DOUJIN_BOOTHS], "4号馆", "◀ 4号馆入口");
+      } else if (currentHall === "h5") {
+        drawHallInterior(pal, HALL5_ZONES, "5号馆", "◀ 5号馆入口");
+      } else if (currentHall === "h6") {
+        drawHallInterior(pal, HALL6_ZONES, "6号馆", "◀ 6号馆入口");
+      }
+    }
+
+    function requestDraw() {
+      if (!needsDraw) {
+        needsDraw = true;
+        requestAnimationFrame(draw);
+      }
+    }
+
+    function pointInPoly(px, py, poly) {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].x, yi = poly[i].y;
+        const xj = poly[j].x, yj = poly[j].y;
+        const intersect = ((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function hitTest(mx, my) {
+      for (let i = hitTargets.length - 1; i >= 0; i--) {
+        if (pointInPoly(mx, my, hitTargets[i].poly)) return hitTargets[i];
+      }
+      return null;
+    }
+
+    function switchHall(h) {
+      currentHall = h;
+      document.querySelectorAll(".hall-tab").forEach(btn => {
+        btn.className = btn.dataset.hall === h
+          ? "hall-tab px-2.5 py-1 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold cursor-pointer"
+          : "hall-tab px-2.5 py-1 rounded-full text-[var(--muted-foreground)] cursor-pointer";
+      });
+      if (h === "overview") closeSheet();
+      resetView();
+    }
+
+    function openCurrentOfficialImg() {
+      if (currentHall === "h4") openLightbox("posters/official_hall4.webp", "官方 4号馆平面原图");
+      else openLightbox("posters/official_venue.webp", "官方 4/5/6号馆位置总览原图");
+    }
+
+    let currentGalleryIdx = 0;
+    let lbList = [], lbIdx = 0, lbTitle = "";
+
+    function setSidebarImg(idx) {
+      const b = ALL_CLICKABLES.find(x => x.id === selectedId);
+      if (!b || !b.gallery.length) return;
+      currentGalleryIdx = (idx + b.gallery.length) % b.gallery.length;
+      renderSheet(false);
+    }
+
+    function renderSheet(resetIdx = true) {
+      const sidebar = document.getElementById("detailSidebar");
+      const controls = document.getElementById("mapControls");
+      const topBar = document.getElementById("topBar");
+      if (!selectedId) {
+        sidebar.classList.remove("sidebar-open");
+        sidebar.classList.add("sidebar-closed");
+        controls.style.right = "12px";
+        topBar.style.right = "12px";
+        return;
+      }
+      const b = ALL_CLICKABLES.find(x => x.id === selectedId);
+      if (!b) return;
+      if (resetIdx) currentGalleryIdx = 0;
+      const isStar = starred.has(b.id);
+      const accent = tierAccent(b.tier);
+      const imgs = b.gallery || [];
+      const curImg = imgs[currentGalleryIdx] || b.poster;
+
+      const posterBlock = imgs.length > 0
+        ? `<div class="space-y-2">
+             <div class="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--content)] relative group">
+               <img onclick="openGalleryLightbox('${b.id}', ${currentGalleryIdx})" src="${curImg}" alt="${b.name}" class="w-full h-72 object-cover cursor-zoom-in group-hover:scale-[1.02] transition-transform" />
+               ${imgs.length > 1 ? `
+                 <button onclick="setSidebarImg(${currentGalleryIdx - 1})" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/65 hover:bg-black/85 text-white text-lg flex items-center justify-center cursor-pointer">‹</button>
+                 <button onclick="setSidebarImg(${currentGalleryIdx + 1})" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/65 hover:bg-black/85 text-white text-lg flex items-center justify-center cursor-pointer">›</button>
+                 <span class="absolute top-2.5 left-2.5 text-[11px] font-mono px-2 py-0.5 rounded-full bg-black/75 text-white">${currentGalleryIdx + 1} / ${imgs.length}</span>
+               ` : ""}
+               <span onclick="openGalleryLightbox('${b.id}', ${currentGalleryIdx})" class="absolute bottom-2.5 right-2.5 text-xs px-2.5 py-1 rounded-full bg-black/75 text-white font-medium cursor-zoom-in">🔍 点击看高清原图</span>
+             </div>
+             ${imgs.length > 1 ? `
+               <div class="flex gap-1.5 overflow-x-auto pb-1">
+                 ${imgs.map((src, i) => `
+                   <img onclick="setSidebarImg(${i})" src="${src}" class="w-16 h-16 rounded-lg object-cover shrink-0 cursor-pointer border-2 transition-all ${i === currentGalleryIdx ? 'border-[var(--primary)] opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}" />
+                 `).join("")}
+               </div>
+             ` : ""}
+           </div>`
+        : `<div class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--content)] py-8 text-center text-xs text-[var(--muted-foreground)]">
+             暂未搜到该摊公开制品图（可在小红书搜 @三天不打鱼 汇总网页或周六晚看现场返图）
+           </div>`;
+
+      const badgeLabel = b.tier === "OFF" ? "官方核心区"
+        : b.tier === "PARTNER" ? "异业合作 · 1087+赞"
+        : b.tier !== "N" ? `${b.tier} · ${b.likes}+赞` : "";
+
+      document.getElementById("sheetContent").innerHTML = `
+        <div class="p-4 border-b border-[var(--border)] flex items-start justify-between gap-3 shrink-0">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-1.5 text-xs">
+              <span class="px-2 py-0.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-medium">${b.hall}</span>
+              ${b.kind === "doujin" ? `<span class="px-2 py-0.5 rounded-full bg-[var(--content)] border border-[var(--border)] font-mono font-bold">展位 ${b.id}</span>` : ""}
+              ${badgeLabel ? `<span class="px-2 py-0.5 rounded-full text-white font-semibold" style="background:${accent}">${badgeLabel}</span>` : ""}
+            </div>
+            <h3 class="text-lg font-bold mt-2 leading-snug">${b.name}</h3>
+            <p class="text-xs text-[var(--muted-foreground)] mt-1">${b.artists}</p>
+          </div>
+          <button onclick="closeSheet()" class="w-8 h-8 rounded-full bg-[var(--content)] hover:bg-[var(--border)] flex items-center justify-center text-sm cursor-pointer shrink-0">✕</button>
+        </div>
+
+        <div class="p-4 space-y-4 overflow-y-auto flex-1">
+          ${posterBlock}
+          <div class="flex flex-wrap gap-1.5">
+            ${b.tags.map(t => `<span class="text-xs px-2.5 py-1 rounded-full bg-[var(--content)] border border-[var(--border)]">${t}</span>`).join("")}
+          </div>
+          <div class="space-y-3 text-sm leading-relaxed">
+            <div class="p-3 rounded-xl bg-[var(--content)] border border-[var(--border)]">
+              <div class="text-xs text-[var(--muted-foreground)] mb-1">核心内容 / 涉及角色</div>
+              <div class="font-medium">${b.chars}</div>
+            </div>
+            <div>
+              <div class="text-xs text-[var(--muted-foreground)] mb-1">区域/摊位说明</div>
+              <p class="text-sm leading-relaxed">${b.desc}</p>
+            </div>
+            <div class="p-3.5 rounded-xl bg-[var(--content)] border-l-4 border-[var(--primary)]">
+              <div class="text-xs font-bold text-[var(--primary)] mb-1">D3（周日）逛展建议</div>
+              <p class="text-xs leading-relaxed">${b.d3Note}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 border-t border-[var(--border)] flex items-center gap-2.5 shrink-0">
+          <button onclick="toggleStar('${b.id}')" class="flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors ${isStar ? 'bg-[var(--success)] text-white' : 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90'}">
+            ${isStar ? '★ 已收藏至我的 D3 路线' : '☆ 收藏到我的 D3 路线'}
+          </button>
+          ${imgs.length > 0 ? `<button onclick="openGalleryLightbox('${b.id}', ${currentGalleryIdx})" class="px-4 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium hover:border-[var(--primary)] cursor-pointer">看原图(${imgs.length})</button>` : ""}
+        </div>
+      `;
+
+      sidebar.classList.remove("sidebar-closed");
+      sidebar.classList.add("sidebar-open");
+      if (window.innerWidth >= 768) {
+        controls.style.right = "456px";
+        topBar.style.right = "452px";
+      } else if (window.innerWidth >= 640) {
+        controls.style.right = "416px";
+        topBar.style.right = "412px";
+      }
+    }
+
+    function closeSheet() {
+      selectedId = null;
+      renderSheet();
+      requestDraw();
+    }
+
+    function toggleStar(id) {
+      if (starred.has(id)) starred.delete(id);
+      else starred.add(id);
+      localStorage.setItem("zzz_fes_d3_plan_v3", JSON.stringify([...starred]));
+      updateFavBadge();
+      renderSheet();
+      requestDraw();
+    }
+
+    function updateFavBadge() {
+      document.getElementById("favCountBadge").textContent = starred.size;
+    }
+
+    function toggleMode() {
+      mode = mode === "3d" ? "2d" : "3d";
+      document.getElementById("btnMode").textContent = mode === "3d" ? "3D" : "2D";
+      resetView();
+    }
+
+    function resetView() {
+      const cw = canvas.clientWidth;
+      const ch = canvas.clientHeight;
+      if (currentHall === "overview") {
+        view.scale = Math.min(cw / 1200, ch / 820, 0.92);
+        view.x = -30;
+        view.y = 30;
+      } else if (mode === "3d") {
+        view.scale = Math.min(cw / 1450, ch / 780, 0.86);
+        view.x = 0;
+        view.y = 25;
+      } else {
+        view.scale = Math.min(cw / 1260, ch / 760, 0.92);
+        view.x = 0;
+        view.y = 30;
+      }
+      requestDraw();
+    }
+
+    function focusDoujinZone() {
+      if (currentHall !== "h4") switchHall("h4");
+      const c = getWorldCenter();
+      const wx = 138, wy = 398;
+      view.scale = mode === "3d" ? 1.48 : 1.42;
+      const rx = wx - c.x, ry = wy - c.y;
+      const shift = selectedId && window.innerWidth >= 768 ? -200 : 0;
+      if (mode === "2d") {
+        view.x = -rx * view.scale + shift;
+        view.y = -ry * view.scale;
+      } else {
+        view.x = -(rx - ry) * 0.866 * view.scale + shift;
+        view.y = -(rx + ry) * 0.45 * view.scale;
+      }
+      requestDraw();
+    }
+
+    function focusItem(id) {
+      const item = ALL_CLICKABLES.find(x => x.id === id);
+      if (!item) return;
+      if (id.startsWith("H5_")) switchHall("h5");
+      else if (id.startsWith("H6_")) switchHall("h6");
+      else if (currentHall !== "h4") switchHall("h4");
+
+      selectedId = id;
+      const c = getWorldCenter();
+      const [wx, wy] = polyCentroid(item.poly);
+      view.scale = item.kind === "doujin" ? 1.5 : 0.92;
+      const rx = wx - c.x, ry = wy - c.y;
+      const shift = window.innerWidth >= 768 ? -210 : 0;
+      if (mode === "2d") {
+        view.x = -rx * view.scale + shift;
+        view.y = -ry * view.scale;
+      } else {
+        view.x = -(rx - ry) * 0.866 * view.scale + shift;
+        view.y = -(rx + ry) * 0.45 * view.scale;
+      }
+      renderSheet();
+      requestDraw();
+    }
+
+    function zoomCenter(factor) {
+      view.scale = Math.max(0.35, Math.min(2.8, view.scale * factor));
+      requestDraw();
+    }
+
+    let posterWallOpen = false;
+    function togglePosterWall() {
+      posterWallOpen = !posterWallOpen;
+      document.getElementById("posterWall").style.transform = posterWallOpen ? "translateX(0)" : "translateX(100%)";
+    }
+
+    function buildPosterWall() {
+      const grid = document.getElementById("posterGrid");
+      const items = [
+        { id: "OFF_ISLAND", label: "官方4号馆", name: "4号馆官方全景", artists: "官方地图情报", poster: "posters/official_hall4.webp", likes: 0, cnt: 1 },
+        { id: "H5_STAGE", label: "官方三馆", name: "4/5/6号馆位置图", artists: "港城大道站 B/C口", poster: "posters/official_venue.webp", likes: 0, cnt: 1 },
+        ...ALL_CLICKABLES.filter(b => b.gallery && b.gallery.length > 0 && b.kind !== "official").sort((a, b) => b.likes - a.likes).map(b => ({
+          id: b.id, label: b.id === "OFF_PARTNER" ? "异业/雅迪" : b.id, name: b.name, artists: b.artists, poster: b.gallery[0], likes: b.likes, cnt: b.gallery.length
+        }))
+      ];
+      grid.innerHTML = items.map(b => `
+        <div onclick="togglePosterWall(); focusItem('${b.id}')" class="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--content)] cursor-pointer hover:border-[var(--primary)] transition-colors flex flex-col">
+          <div class="relative h-36 bg-black/10">
+            <img src="${b.poster}" alt="${b.name}" loading="lazy" class="w-full h-full object-cover" />
+            <span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/75 text-white font-mono text-[10px] font-bold">${b.label}</span>
+            <span class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/75 text-white text-[10px]">${b.cnt}张图${b.likes > 0 ? " · " + b.likes + "赞" : ""}</span>
+          </div>
+          <div class="p-2">
+            <div class="text-xs font-bold truncate">${b.name}</div>
+            <div class="text-[11px] text-[var(--muted-foreground)] truncate">${b.artists}</div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function openLightbox(src, title) {
+      lbList = [src];
+      lbIdx = 0;
+      lbTitle = title;
+      renderLightbox();
+    }
+
+    function openGalleryLightbox(id, startIdx = 0) {
+      const b = ALL_CLICKABLES.find(x => x.id === id);
+      if (!b || !b.gallery.length) return;
+      lbList = b.gallery;
+      lbIdx = startIdx;
+      lbTitle = `${b.id === "OFF_PARTNER" ? "异业合作" : b.id} · ${b.name}`;
+      renderLightbox();
+    }
+
+    let lbZoomed = false;
+
+    function applyLightboxZoom() {
+      const img = document.getElementById("lightboxImg");
+      const btn = document.getElementById("lbZoomBtn");
+      if (lbZoomed) {
+        img.className = "w-auto max-w-none h-auto rounded-lg shadow-2xl cursor-zoom-out";
+        btn.textContent = "🔍 适应宽度";
+      } else {
+        img.className = "w-full max-w-[960px] h-auto rounded-lg shadow-2xl cursor-zoom-in";
+        btn.textContent = "🔍 原尺寸";
+      }
+    }
+
+    function toggleLightboxZoom() {
+      lbZoomed = !lbZoomed;
+      applyLightboxZoom();
+    }
+
+    function renderLightbox() {
+      lbZoomed = false;
+      applyLightboxZoom();
+      document.getElementById("lightboxImg").src = lbList[lbIdx];
+      document.getElementById("lightboxTitle").textContent = lbTitle;
+      document.getElementById("lightboxCounter").textContent = lbList.length > 1 ? `(${lbIdx + 1} / ${lbList.length})` : "";
+      document.getElementById("lbPrev").classList.toggle("hidden", lbList.length <= 1);
+      document.getElementById("lbNext").classList.toggle("hidden", lbList.length <= 1);
+      document.getElementById("lbScroll").scrollTop = 0;
+      const lb = document.getElementById("lightbox");
+      lb.classList.remove("hidden");
+      lb.classList.add("flex");
+    }
+
+    function stepLightbox(delta) {
+      if (lbList.length <= 1) return;
+      lbIdx = (lbIdx + delta + lbList.length) % lbList.length;
+      renderLightbox();
+    }
+
+    function closeLightbox() {
+      const lb = document.getElementById("lightbox");
+      lb.classList.add("hidden");
+      lb.classList.remove("flex");
+    }
+
+    window.addEventListener("keydown", e => {
+      const lb = document.getElementById("lightbox");
+      if (lb.classList.contains("hidden")) return;
+      if (e.key === "ArrowLeft") stepLightbox(-1);
+      else if (e.key === "ArrowRight") stepLightbox(1);
+      else if (e.key === "Escape") closeLightbox();
+    });
+
+    // 交互
+    let dragging = false, moved = false, startX = 0, startY = 0, origX = 0, origY = 0;
+
+    canvas.addEventListener("pointerdown", e => {
+      dragging = true; moved = false;
+      startX = e.clientX; startY = e.clientY;
+      origX = view.x; origY = view.y;
+    });
+
+    window.addEventListener("pointermove", e => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      if (dragging) {
+        const dx = e.clientX - startX, dy = e.clientY - startY;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+        view.x = origX + dx; view.y = origY + dy;
+        requestDraw();
+        return;
+      }
+      const hit = hitTest(mx, my);
+      const newHov = hit ? (hit.item ? hit.item.id : hit.id) : null;
+      if (newHov !== hoveredId) {
+        hoveredId = newHov;
+        canvas.style.cursor = hoveredId ? "pointer" : "grab";
+        requestDraw();
+      }
+    });
+
+    window.addEventListener("pointerup", e => {
+      if (!dragging) return;
+      dragging = false;
+      if (!moved) {
+        const rect = canvas.getBoundingClientRect();
+        const hit = hitTest(e.clientX - rect.left, e.clientY - rect.top);
+        if (hit) {
+          if (hit.overviewTarget) {
+            switchHall(hit.overviewTarget);
+          } else if (hit.item) {
+            selectedId = hit.item.id;
+            renderSheet();
+            requestDraw();
+          }
+        } else if (e.target === canvas) {
+          closeSheet();
+        }
+      }
+    });
+
+    canvas.addEventListener("wheel", e => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left - rect.width / 2;
+      const my = e.clientY - rect.top - rect.height / 2;
+      const factor = e.deltaY < 0 ? 1.12 : 0.89;
+      const nextScale = Math.max(0.35, Math.min(2.8, view.scale * factor));
+      const ratio = nextScale / view.scale;
+      view.x = mx - (mx - view.x) * ratio;
+      view.y = my - (my - view.y) * ratio;
+      view.scale = nextScale;
+      requestDraw();
+    }, { passive: false });
+
+    document.querySelectorAll(".hall-tab").forEach(btn => {
+      btn.addEventListener("click", () => switchHall(btn.dataset.hall));
+    });
+
+    const searchInput = document.getElementById("searchInput");
+    searchInput.addEventListener("input", e => {
+      searchQuery = e.target.value;
+      document.getElementById("btnClearSearch").classList.toggle("hidden", !searchQuery);
+      requestDraw();
+    });
+    function clearSearch() {
+      searchQuery = ""; searchInput.value = "";
+      document.getElementById("btnClearSearch").classList.add("hidden");
+      requestDraw();
+    }
+
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeFilter = btn.dataset.filter;
+        document.querySelectorAll(".filter-btn").forEach(b => {
+          b.className = b === btn
+            ? "filter-btn px-2.5 py-1 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-medium shadow-sm cursor-pointer"
+            : "filter-btn px-2.5 py-1 rounded-full bg-[var(--card)]/92 border border-[var(--border)] text-[var(--foreground)] shadow-sm cursor-pointer";
+        });
+        requestDraw();
+      });
+    });
+
+    function syncStageHeight() {
+      const stage = document.getElementById("mapStage");
+      if (window.innerHeight >= 500) stage.style.height = window.innerHeight + "px";
+      requestDraw();
+    }
+    window.addEventListener("resize", () => { syncStageHeight(); resetView(); });
+    window.addEventListener("themechange", requestDraw);
+
+    function ensureThemeTokens() {
+      const cs = getComputedStyle(document.documentElement);
+      if (!cs.getPropertyValue("--card").trim()) {
+        const fallback = {
+          "--background": "#12161d", "--content": "#1b2230", "--card": "#1e2533",
+          "--border": "#334155", "--foreground": "#f1f5f9", "--muted-foreground": "#94a3b8",
+          "--placeholder": "#64748b", "--primary": "#3b82f6", "--primary-foreground": "#ffffff",
+          "--success": "#10b981", "--warning": "#f59e0b", "--error": "#ef4444"
+        };
+        for (const [k, v] of Object.entries(fallback)) document.body.style.setProperty(k, v);
+      }
+    }
+
+    ensureThemeTokens();
+    syncStageHeight();
+    updateFavBadge();
+    buildPosterWall();
+    resetView();
+    draw();
+  </script>
+</body>
+</html>
