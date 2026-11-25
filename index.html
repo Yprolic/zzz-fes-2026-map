@@ -7,12 +7,13 @@
   <script src="./vendor/tailwindcss.min.js"></script>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; width: 100%; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
     #mapStage {
       position: relative;
       width: 100%;
-      height: 760px;
-      min-height: 640px;
+      height: 100vh;
+      height: 100dvh;
+      min-height: 520px;
       overflow: hidden;
     }
     #mapCanvas {
@@ -202,7 +203,7 @@
     // ========= 3. 4号馆同人区 36 摊（统一标准高度 14px，不再高低不平；颜色只标热度等级） =========
     const DOUJIN_BOOTHS = [
       { id: "D01", row: 0, col: 3, hall: "4号馆 · 同人区", name: "原汁云喵 × 喵游星辰", artists: "原汁云喵 / 舍舍", tier: "T0", likes: 1664, poster: "posters/D01.webp", tags: ["全网热度第1", "场贩无料", "满赠"], chars: "浅羽悠真、雨果、赛维里安、莱特", desc: "【Velvet Late Hour】同人企划（1664赞），制品/满赠/无料齐全。", d3Note: "关注+❤+⭐+💬摊宣现场领无料（提前截图）。" },
-      { id: "D02", row: 1, col: 3, hall: "4号馆 · 同人区", name: "那个S什么N的（SuperAppleMan & Seseren）", artists: "SuperAppleMan / Seseren", tier: "T0", likes: 856, poster: "posters/D02.webp", tags: ["顶流画师", "29号苹果人生日", "复刻娃娃/挂件"], chars: "苍角、蕾米、希希芙、塞维等娃娃/挂件/亚克力摇摇乐", desc: "SuperAppleMan（856赞）与 Seseren（707赞）双神合摊！新品 + 往期娃娃和挂件复刻，27–29号本人都在场。", d3Note: "🎂 29号（周日）正好是 SuperAppleMan 老师生日！展后有线上，想见本人/抢现货紧邻D01连排。" },
+      { id: "D02", row: 1, col: 3, hall: "4号馆 · 同人区", name: "那个S什么N的（SuperAppleMan & Seseren）", artists: "SuperAppleMan / Seseren", tier: "T0", likes: 1704, poster: "posters/gallery/D02_new_0.webp", tags: ["1704赞顶流", "完整菜单已出", "复刻娃娃/挂件"], chars: "苍角、蕾米、希希芙、塞维等娃娃/挂件/亚克力摇摇乐", desc: "SuperAppleMan（最新菜单1704赞）与 Seseren（707赞）双神合摊！27–29号本人都在场，含新品与往期娃娃/挂件复刻。", d3Note: "29号（D3）正好是 SuperAppleMan 老师生日！展后有线上，想见本人或抢现货建议紧邻D01连排。" },
       { id: "D03", row: 2, col: 3, hall: "4号馆 · 同人区", name: "姬海棠羽笠果 & 一万根韭菜", artists: "姬海棠羽笠果 / 一万根韭菜", tier: "N", likes: 67, poster: "posters/gallery/D03_0.webp", tags: ["合摊", "有制品图"], chars: "同人制品", desc: "D03双画师合摊（一万根韭菜67赞），紧邻D02。", d3Note: "顺路逛。" },
       { id: "D04", row: 3, col: 3, hall: "4号馆 · 同人区", name: "心跳第七次（七赫兹 & 心脏弱真君）", artists: "七赫兹_SevenHz / 心脏弱真君", tier: "T0", likes: 1062, poster: "posters/gallery/D04_0.webp", tags: ["千赞顶流", "8K插图周边首发", "后续有通贩"], chars: "蕾米埃尔 × 挽昼《循旧时梦》、妄想天使《虹彩甜品》", desc: "🔥 超人气千赞摊（1062赞）！首发《循旧时梦》长发双翼蕾米+挽昼8K复古插图周边，以及《虹彩甜品》企划。", d3Note: "热度破千必排长龙，摊主表示后续也会开通贩。" },
       { id: "D05", row: 4, col: 3, hall: "4号馆 · 同人区", name: "寰宇诺亚", artists: "寰宇诺亚", tier: "T2", likes: 356, poster: "posters/D05.webp", tags: ["明信片口碑极佳", "五弹摊宣"], chars: "多角色明信片/同人谷", desc: "连发五弹摊宣（最高356赞），明信片系列备受好评。", d3Note: "喜欢明信片的必逛。" },
@@ -215,10 +216,10 @@
       { id: "C02", row: 1, col: 2, hall: "4号馆 · 同人区", name: "可爱公馆 & Thoyadoggy", artists: "可爱公馆 / Thoyadoggy", tier: "T2", likes: 287, poster: "posters/gallery/C02_0.webp", tags: ["人气合摊", "287赞"], chars: "多角色同人制品", desc: "双社团人气合摊（Thoyadoggy 287赞）。", d3Note: "逛C区顺路看。" },
       { id: "C03", row: 2, col: 2, hall: "4号馆 · 同人区", name: "CAISENA", artists: "CAISENA", tier: "N", likes: 0, poster: null, tags: ["个人摊"], chars: "同人制品", desc: "C区个人摊。", d3Note: "紧邻C04。" },
       { id: "C04", row: 3, col: 2, hall: "4号馆 · 同人区", name: "零时钟点工 & 白面包裹小黑猫", artists: "零时钟点工 / 白面包裹小黑猫", tier: "T1", likes: 565, poster: "posters/C04.webp", tags: ["满赠不补", "仅余量通贩"], chars: "妄想天使系列、兄妹俩、吱吱叫包挂", desc: "三天全勤大热摊（565赞），妄想天使与兄妹系列。", d3Note: "部分谷子和满赠售完不补，想吃满赠建议早冲！" },
-      { id: "C05", row: 4, col: 2, hall: "4号馆 · 同人区", name: "娃娃菜特供粥铺", artists: "高山娃娃菜 / 阿粥", tier: "T1", likes: 486, poster: "posters/C05.webp", tags: ["满赠互通", "仅余量通贩"], chars: "雨果等热门角色", desc: "两社团满赠可合并累计！去年现场被抢爆。", d3Note: "展后仅余量上架，D3优先度高。" },
-      { id: "C06", row: 5, col: 2, hall: "4号馆 · 同人区", name: "-saske-", artists: "-saske-", tier: "N", likes: 0, poster: null, tags: ["个人摊"], chars: "同人制品", desc: "位于C05和C07之间。", d3Note: "顺路看。" },
-      { id: "C07", row: 6, col: 2, hall: "4号馆 · 同人区", name: "一生的请求", artists: "奥奥orsat / VIA石楠", tier: "T1", likes: 575, poster: "posters/C07.webp", tags: ["场贩无料", "满赠", "3天全勤"], chars: "赛维里安、蕾米、雨果、叶瞬光、莱特、薇薇安、悠真", desc: "高人气全勤合摊（575赞），角色覆盖超全。", d3Note: "关注+三连+评论领场贩限定物料（提前截图）。" },
-      { id: "C08", row: 7, col: 2, hall: "4号馆 · 同人区", name: "花久花酒", artists: "花久花酒", tier: "N", likes: 0, poster: null, tags: ["个人摊"], chars: "同人制品", desc: "C区同人摊。", d3Note: "顺路逛。" },
+      { id: "C05", row: 4, col: 2, hall: "4号馆 · 同人区", name: "娃娃菜特供粥铺", artists: "高山娃娃菜 / 阿粥", tier: "T1", likes: 486, poster: "posters/C05.webp", tags: ["满赠互通", "仅余量通贩"], chars: "雨果等热门角色", desc: "两社团满赠可合并累计！去年现场被抢爆。", d3Note: "展后仅余量上架，热门摊建议优先逛。" },
+      { id: "C06", row: 5, col: 2, hall: "4号馆 · 同人区", name: "-saske- & 电子罐头", artists: "-saske- / 电子罐头", tier: "T1", likes: 406, poster: "posters/gallery/C06_new_0.webp", tags: ["406赞高热", "现场真扭蛋机", "同步通贩"], chars: "绝区零多角色制品 + 现场扭蛋机抽大红 + 少量预制签绘", desc: "三日全勤合摊（406赞）！现场带了真扭蛋机可抽大红，微店「West Coast」已同步开通贩。", d3Note: "现场预制签绘总量仅10+份，想冲签绘或扭蛋机建议早去。" },
+      { id: "C07", row: 6, col: 2, hall: "4号馆 · 同人区", name: "一生的请求", artists: "奥奥orsat / VIA石楠", tier: "T1", likes: 575, poster: "posters/C07.webp", tags: ["场贩无料", "满赠", "3天全勤"], chars: "赛维里安、蕾米、雨果、叶瞬光、莱特、薇薇安、悠真", desc: "高人气全勤合摊（575赞），角色覆盖超全。", d3Note: "关注+三连+评论领场贩限定物料（建议提前截图）。" },
+      { id: "C08", row: 7, col: 2, hall: "4号馆 · 同人区", name: "异世界狂欢（花久花酒）", artists: "花久花酒", tier: "N", likes: 146, poster: "posters/gallery/C08_new_0.webp", tags: ["146赞", "The wonderland企划", "6张完整菜单"], chars: "【The wonderland】绝区零同人周边企划", desc: "三日全勤参展（146赞），【The wonderland】主题企划，右侧可翻看6张高清菜单与实物图。", d3Note: "三日全勤，逛C区时顺路打卡。" },
       { id: "C09", row: 8, col: 2, hall: "4号馆 · 同人区", name: "中午起床 & 小鸟软糖", artists: "中午起床 / 小鸟软糖", tier: "T2", likes: 292, poster: "posters/C09.webp", tags: ["人气合摊", "终宣菜单"], chars: "同人制品", desc: "参展摊宣292赞+终宣菜单113赞，紧邻D09。", d3Note: "逛完D09顺路看。" },
 
       { id: "B01", row: 0, col: 1, hall: "4号馆 · 同人区", name: "摸鱼的契约叔 & 狗空", artists: "摸鱼的契约叔 / 狗空不是米吹", tier: "T2", likes: 292, poster: "posters/B01.webp", tags: ["热门无料"], chars: "实用向无料/同人", desc: "「最实用的无料」爆火贴摊主（292赞）。", d3Note: "想换无料建议早去。" },
@@ -239,7 +240,7 @@
       { id: "A06", row: 5, col: 0, hall: "4号馆 · 同人区", name: "猫猫头工作室", artists: "猫猫头工作室", tier: "N", likes: 13, poster: "posters/gallery/A06_0.webp", tags: ["工作室", "有摊宣图"], chars: "同人周边", desc: "同人工作室摊位，位于A05和A07之间。", d3Note: "顺路逛。" },
       { id: "A07", row: 6, col: 0, hall: "4号馆 · 同人区", name: "三分甜麦麦薯饼", artists: "有猫饼同人社 / 三甜 / 麦O劳美味大汉堡", tier: "T0", likes: 916, poster: "posters/A07.webp", tags: ["916赞顶流", "首发", "3人合摊"], chars: "挽昼、蕾米、悠真、莱特等24角色", desc: "三人超人气合摊（麦O劳916赞 + 有猫饼470赞）！首发【动物凶萌5.0】、挽昼四插大立牌、24角色毛毡板。", d3Note: "想买首发立牌和毛毡板建议早排。" },
       { id: "A08", row: 7, col: 0, hall: "4号馆 · 同人区", name: "摩卡北北 & 大碗茶", artists: "摩卡北北 / 仙家严选大碗茶", tier: "N", likes: 21, poster: "posters/gallery/A08_0.webp", tags: ["合摊", "六弹菜单"], chars: "多款制品菜单", desc: "摩卡北北连发六弹制品菜单，紧邻A07和A09。", d3Note: "排A07/A09时顺路看。" },
-      { id: "A09", row: 8, col: 0, hall: "4号馆 · 同人区", name: "冰镇H2O等4人合摊", artists: "冰镇H2O / 殇雪笙桃 / 歆麦why / 夜离", tier: "T1", likes: 419, poster: "posters/A09.webp", tags: ["扫码点单", "满赠不拆天"], chars: "浅羽悠真、哲、莱特、雨果等", desc: "四位高人气画师合摊（419+346赞），支持现场扫码线上点单。", d3Note: "满赠不按天拆分、送完即止，D3务必周六晚确认余量！" }
+      { id: "A09", row: 8, col: 0, hall: "4号馆 · 同人区", name: "冰镇H2O等4人合摊", artists: "冰镇H2O / 殇雪笙桃 / 歆麦why / 夜离", tier: "T1", likes: 419, poster: "posters/A09.webp", tags: ["扫码点单", "满赠不拆天"], chars: "浅羽悠真、哲、莱特、雨果等", desc: "四位高人气画师合摊（419+346赞），支持现场扫码线上点单。", d3Note: "满赠不按天拆分、送完即止，满赠数量有限，建议尽早逛或提前确认余量！" }
     ].map(b => ({
       ...b,
       kind: "doujin",
@@ -264,7 +265,7 @@
       { id: "H6_REST", hall: "6号馆 · 官方周边", kind: "official", tier: "OFF", name: "休息区", artists: "6号馆场内休息区", likes: 0, poster: "posters/official_venue.webp", tags: ["休息补给"], chars: "逛累了可在此休整", desc: "位于6号馆入口内侧的休息区。", d3Note: "从右侧入口进馆最先经过休息区。", poly: chamferRect(755, 175, 135, 270, 12, 12, 12, 12), h: 16 }
     ];
 
-    const GALLERY_MAP = {"A01": ["posters/gallery/A01_0.webp", "posters/gallery/A01_1.webp", "posters/gallery/A01_2.webp", "posters/gallery/A01_3.webp", "posters/gallery/A01_4.webp"], "A04": ["posters/gallery/A04_0.webp", "posters/gallery/A04_1.webp", "posters/gallery/A04_2.webp", "posters/gallery/A04_3.webp", "posters/gallery/A04_4.webp"], "A05": ["posters/gallery/A05_0.webp", "posters/gallery/A05_1.webp", "posters/gallery/A05_2.webp", "posters/gallery/A05_3.webp", "posters/gallery/A05_4.webp"], "A06": ["posters/gallery/A06_0.webp"], "A07": ["posters/gallery/A07_0.webp", "posters/gallery/A07_1.webp", "posters/gallery/A07_2.webp", "posters/gallery/A07_3.webp", "posters/gallery/A07_4.webp"], "A08": ["posters/gallery/A08_0.webp", "posters/gallery/A08_1.webp"], "A09": ["posters/gallery/A09_0.webp", "posters/gallery/A09_1.webp", "posters/gallery/A09_2.webp", "posters/gallery/A09_3.webp", "posters/gallery/A09_4.webp"], "B01": ["posters/gallery/B01_0.webp"], "B02": ["posters/gallery/B02_0.webp", "posters/gallery/B02_1.webp"], "B03": ["posters/gallery/B03_0.webp", "posters/gallery/B03_1.webp", "posters/gallery/B03_2.webp", "posters/gallery/B03_3.webp"], "B04": ["posters/gallery/B04_0.webp", "posters/gallery/B04_1.webp", "posters/gallery/B04_2.webp", "posters/gallery/B04_3.webp", "posters/gallery/B04_4.webp"], "B06": ["posters/gallery/B06_0.webp", "posters/gallery/B06_1.webp", "posters/gallery/B06_2.webp"], "B07": ["posters/gallery/B07_0.webp", "posters/gallery/B07_1.webp"], "B08": ["posters/gallery/B08_0.webp"], "B09": ["posters/gallery/B09_0.webp", "posters/gallery/B09_1.webp", "posters/gallery/B09_2.webp"], "C02": ["posters/gallery/C02_0.webp", "posters/gallery/C02_1.webp", "posters/gallery/C02_2.webp"], "C04": ["posters/gallery/C04_0.webp", "posters/gallery/C04_1.webp", "posters/gallery/C04_2.webp", "posters/gallery/C04_3.webp", "posters/gallery/C04_4.webp"], "C05": ["posters/gallery/C05_0.webp", "posters/gallery/C05_1.webp", "posters/gallery/C05_2.webp"], "C07": ["posters/gallery/C07_0.webp", "posters/gallery/C07_1.webp", "posters/gallery/C07_2.webp", "posters/gallery/C07_3.webp", "posters/gallery/C07_4.webp"], "C09": ["posters/gallery/C09_0.webp", "posters/gallery/C09_1.webp", "posters/gallery/C09_2.webp", "posters/gallery/C09_3.webp", "posters/gallery/C09_4.webp"], "D01": ["posters/gallery/D01_0.webp", "posters/gallery/D01_1.webp", "posters/gallery/D01_2.webp", "posters/gallery/D01_3.webp", "posters/gallery/D01_4.webp"], "D02": ["posters/gallery/D02_0.webp", "posters/gallery/D02_1.webp"], "D03": ["posters/gallery/D03_0.webp"], "D04": ["posters/gallery/D04_0.webp", "posters/gallery/D04_1.webp"], "D05": ["posters/gallery/D05_0.webp", "posters/gallery/D05_1.webp", "posters/gallery/D05_2.webp", "posters/gallery/D05_3.webp"], "D06": ["posters/gallery/D06_0.webp", "posters/gallery/D06_1.webp"], "D07": ["posters/gallery/D07_0.webp", "posters/gallery/D07_1.webp"], "D09": ["posters/gallery/D09_0.webp", "posters/gallery/D09_1.webp", "posters/gallery/D09_2.webp", "posters/gallery/D09_3.webp", "posters/gallery/D09_4.webp"]};
+    const GALLERY_MAP = {"A01": ["posters/gallery/A01_0.webp", "posters/gallery/A01_1.webp", "posters/gallery/A01_2.webp", "posters/gallery/A01_3.webp", "posters/gallery/A01_4.webp"], "A04": ["posters/gallery/A04_0.webp", "posters/gallery/A04_1.webp", "posters/gallery/A04_2.webp", "posters/gallery/A04_fang_new_0.webp", "posters/gallery/A04_fang_new_1.webp", "posters/gallery/A04_fang_new_2.webp", "posters/gallery/A04_fang_new_3.webp"], "A05": ["posters/gallery/A05_0.webp", "posters/gallery/A05_1.webp", "posters/gallery/A05_2.webp", "posters/gallery/A05_3.webp", "posters/gallery/A05_4.webp"], "A06": ["posters/gallery/A06_0.webp"], "A07": ["posters/gallery/A07_0.webp", "posters/gallery/A07_1.webp", "posters/gallery/A07_2.webp", "posters/gallery/A07_3.webp", "posters/gallery/A07_4.webp"], "A08": ["posters/gallery/A08_0.webp", "posters/gallery/A08_1.webp"], "A09": ["posters/gallery/A09_0.webp", "posters/gallery/A09_1.webp", "posters/gallery/A09_2.webp", "posters/gallery/A09_3.webp", "posters/gallery/A09_4.webp"], "B01": ["posters/gallery/B01_0.webp"], "B02": ["posters/gallery/B02_0.webp", "posters/gallery/B02_1.webp"], "B03": ["posters/gallery/B03_0.webp", "posters/gallery/B03_1.webp", "posters/gallery/B03_2.webp", "posters/gallery/B03_3.webp"], "B04": ["posters/gallery/B04_0.webp", "posters/gallery/B04_1.webp", "posters/gallery/B04_2.webp", "posters/gallery/B04_3.webp", "posters/gallery/B04_4.webp"], "B06": ["posters/gallery/B06_0.webp", "posters/gallery/B06_1.webp", "posters/gallery/B06_2.webp"], "B07": ["posters/gallery/B07_0.webp", "posters/gallery/B07_1.webp"], "B08": ["posters/gallery/B08_0.webp"], "B09": ["posters/gallery/B09_0.webp", "posters/gallery/B09_1.webp", "posters/gallery/B09_2.webp"], "C02": ["posters/gallery/C02_0.webp", "posters/gallery/C02_1.webp", "posters/gallery/C02_2.webp"], "C04": ["posters/gallery/C04_0.webp", "posters/gallery/C04_1.webp", "posters/gallery/C04_2.webp", "posters/gallery/C04_3.webp", "posters/gallery/C04_4.webp"], "C05": ["posters/gallery/C05_0.webp", "posters/gallery/C05_1.webp", "posters/gallery/C05_2.webp"], "C06": ["posters/gallery/C06_new_0.webp", "posters/gallery/C06_new_1.webp", "posters/gallery/C06_new_2.webp", "posters/gallery/C06_new_3.webp", "posters/gallery/C06_new_4.webp", "posters/gallery/C06_new_5.webp"], "C07": ["posters/gallery/C07_0.webp", "posters/gallery/C07_1.webp", "posters/gallery/C07_2.webp", "posters/gallery/C07_3.webp", "posters/gallery/C07_4.webp"], "C08": ["posters/gallery/C08_new_0.webp", "posters/gallery/C08_new_1.webp", "posters/gallery/C08_new_2.webp", "posters/gallery/C08_new_3.webp", "posters/gallery/C08_new_4.webp", "posters/gallery/C08_new_5.webp"], "C09": ["posters/gallery/C09_0.webp", "posters/gallery/C09_1.webp", "posters/gallery/C09_2.webp", "posters/gallery/C09_3.webp", "posters/gallery/C09_4.webp"], "D01": ["posters/gallery/D01_0.webp", "posters/gallery/D01_1.webp", "posters/gallery/D01_2.webp", "posters/gallery/D01_3.webp", "posters/gallery/D01_4.webp"], "D02": ["posters/gallery/D02_new_0.webp", "posters/gallery/D02_new_1.webp", "posters/gallery/D02_new_2.webp", "posters/gallery/D02_0.webp", "posters/gallery/D02_1.webp"], "D03": ["posters/gallery/D03_0.webp"], "D04": ["posters/gallery/D04_new_0.webp", "posters/gallery/D04_new_1.webp", "posters/gallery/D04_new_2.webp", "posters/gallery/D04_new_3.webp", "posters/gallery/D04_new_4.webp", "posters/gallery/D04_new_5.webp"], "D05": ["posters/gallery/D05_0.webp", "posters/gallery/D05_1.webp", "posters/gallery/D05_2.webp", "posters/gallery/D05_3.webp"], "D06": ["posters/gallery/D06_0.webp", "posters/gallery/D06_1.webp"], "D07": ["posters/gallery/D07_0.webp", "posters/gallery/D07_1.webp"], "D09": ["posters/gallery/D09_0.webp", "posters/gallery/D09_1.webp", "posters/gallery/D09_2.webp", "posters/gallery/D09_3.webp", "posters/gallery/D09_4.webp"]};
 
     const ALL_CLICKABLES = [...HALL4_ZONES, ...DOUJIN_BOOTHS, ...HALL5_ZONES, ...HALL6_ZONES].map(item => ({
       ...item,
@@ -280,7 +281,7 @@
     let searchQuery = "";
     let selectedId = null;
     let hoveredId = null;
-    let starred = new Set(JSON.parse(localStorage.getItem("zzz_fes_d3_plan_v3") || '["OFF_ISLAND","OFF_BEIKE","D01","D09"]'));
+    let starred = new Set(JSON.parse(localStorage.getItem("zzz_fes_plan_v4") || '["OFF_ISLAND","OFF_BEIKE","D01","D09"]'));
     let view = { x: 0, y: 0, scale: 0.85 };
     let needsDraw = false;
 
@@ -564,6 +565,19 @@
             const sn = item.name.length > 4 ? item.name.slice(0, 4) + "…" : item.name;
             ctx.fillText(sn, res.topCenter.x, res.topCenter.y + fs);
           }
+          // 特定日出摊小角标（仅限非三日全勤的摊位，例如 days: ["D1","D2"]）
+          if (item.days && item.days.length && item.days.length < 3 && view.scale > 0.72) {
+            const [cx, cy] = polyCentroid(item.poly);
+            const bp = project(cx - 14, cy - 12, mode === "3d" ? item.h + 1 : 0);
+            const lbl = item.days.join("/");
+            ctx.font = `700 ${Math.max(7, Math.round(7.5 * view.scale))}px ui-monospace, monospace`;
+            const tw = ctx.measureText(lbl).width + 6;
+            const th = Math.max(10, Math.round(10 * view.scale));
+            ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+            ctx.fillRect(bp.x - tw / 2, bp.y - th / 2, tw, th);
+            ctx.fillStyle = "#f8fafc";
+            ctx.fillText(lbl, bp.x, bp.y + th * 0.3);
+          }
           // 热度颜色圆点（清晰直观，不再用柱高区分）
           if (accent && !isSel) {
             const [cx, cy] = polyCentroid(item.poly);
@@ -684,7 +698,7 @@
 
       const posterBlock = imgs.length > 0
         ? `<div class="space-y-2">
-             <div class="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--content)] relative group">
+             <div id="sidebarGalleryBox" class="rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--content)] relative group touch-pan-y">
                <img onclick="openGalleryLightbox('${b.id}', ${currentGalleryIdx})" src="${curImg}" alt="${b.name}" class="w-full h-72 object-cover cursor-zoom-in group-hover:scale-[1.02] transition-transform" />
                ${imgs.length > 1 ? `
                  <button onclick="setSidebarImg(${currentGalleryIdx - 1})" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/65 hover:bg-black/85 text-white text-lg flex items-center justify-center cursor-pointer">‹</button>
@@ -702,12 +716,15 @@
              ` : ""}
            </div>`
         : `<div class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--content)] py-8 text-center text-xs text-[var(--muted-foreground)]">
-             暂未搜到该摊公开制品图（可在小红书搜 @三天不打鱼 汇总网页或周六晚看现场返图）
+             暂未搜到该摊公开制品图（可在小红书搜 @三天不打鱼 汇总网页查看）
            </div>`;
 
       const badgeLabel = b.tier === "OFF" ? "官方核心区"
         : b.tier === "PARTNER" ? "异业合作 · 1087+赞"
         : b.tier !== "N" ? `${b.tier} · ${b.likes}+赞` : "";
+      const daysBadge = (b.days && b.days.length && b.days.length < 3)
+        ? `<span class="px-2 py-0.5 rounded-full bg-slate-800 text-white font-mono font-bold">仅 ${b.days.join("/")} 出摊</span>`
+        : "";
 
       document.getElementById("sheetContent").innerHTML = `
         <div class="p-4 border-b border-[var(--border)] flex items-start justify-between gap-3 shrink-0">
@@ -715,6 +732,7 @@
             <div class="flex flex-wrap items-center gap-1.5 text-xs">
               <span class="px-2 py-0.5 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] font-medium">${b.hall}</span>
               ${b.kind === "doujin" ? `<span class="px-2 py-0.5 rounded-full bg-[var(--content)] border border-[var(--border)] font-mono font-bold">展位 ${b.id}</span>` : ""}
+              ${daysBadge}
               ${badgeLabel ? `<span class="px-2 py-0.5 rounded-full text-white font-semibold" style="background:${accent}">${badgeLabel}</span>` : ""}
             </div>
             <h3 class="text-lg font-bold mt-2 leading-snug">${b.name}</h3>
@@ -738,7 +756,7 @@
               <p class="text-sm leading-relaxed">${b.desc}</p>
             </div>
             <div class="p-3.5 rounded-xl bg-[var(--content)] border-l-4 border-[var(--primary)]">
-              <div class="text-xs font-bold text-[var(--primary)] mb-1">D3（周日）逛展建议</div>
+              <div class="text-xs font-bold text-[var(--primary)] mb-1">逛展提示</div>
               <p class="text-xs leading-relaxed">${b.d3Note}</p>
             </div>
           </div>
@@ -746,11 +764,29 @@
 
         <div class="p-4 border-t border-[var(--border)] flex items-center gap-2.5 shrink-0">
           <button onclick="toggleStar('${b.id}')" class="flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors ${isStar ? 'bg-[var(--success)] text-white' : 'bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90'}">
-            ${isStar ? '★ 已收藏至我的 D3 路线' : '☆ 收藏到我的 D3 路线'}
+            ${isStar ? '★ 已收藏至我的清单' : '☆ 收藏到我的清单'}
           </button>
           ${imgs.length > 0 ? `<button onclick="openGalleryLightbox('${b.id}', ${currentGalleryIdx})" class="px-4 py-2.5 rounded-xl border border-[var(--border)] text-sm font-medium hover:border-[var(--primary)] cursor-pointer">看原图(${imgs.length})</button>` : ""}
         </div>
       `;
+
+      // 绑定侧栏画廊移动端左右滑动切图
+      const gBox = document.getElementById("sidebarGalleryBox");
+      if (gBox && imgs.length > 1) {
+        let sx = 0, sy = 0;
+        gBox.addEventListener("touchstart", e => {
+          if (e.touches.length === 1) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }
+        }, { passive: true });
+        gBox.addEventListener("touchend", e => {
+          if (e.changedTouches.length === 1) {
+            const dx = e.changedTouches[0].clientX - sx;
+            const dy = e.changedTouches[0].clientY - sy;
+            if (Math.abs(dx) > 42 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+              setSidebarImg(currentGalleryIdx + (dx < 0 ? 1 : -1));
+            }
+          }
+        }, { passive: true });
+      }
 
       sidebar.classList.remove("sidebar-closed");
       sidebar.classList.add("sidebar-open");
@@ -772,7 +808,7 @@
     function toggleStar(id) {
       if (starred.has(id)) starred.delete(id);
       else starred.add(id);
-      localStorage.setItem("zzz_fes_d3_plan_v3", JSON.stringify([...starred]));
+      localStorage.setItem("zzz_fes_plan_v4", JSON.stringify([...starred]));
       updateFavBadge();
       renderSheet();
       requestDraw();
@@ -952,38 +988,102 @@
       else if (e.key === "Escape") closeLightbox();
     });
 
-    // 交互
+    // 交互：支持桌面拖拽/滚轮 + 移动端单指丝滑拖拽 & 双指捏合缩放（以两指中心缩放）
+    const activePointers = new Map();
     let dragging = false, moved = false, startX = 0, startY = 0, origX = 0, origY = 0;
+    let pinchStartDist = 0, pinchStartScale = 1, pinchMidX = 0, pinchMidY = 0, pinchOrigX = 0, pinchOrigY = 0;
+
+    function getPinchInfo() {
+      const pts = [...activePointers.values()];
+      const dx = pts[1].x - pts[0].x;
+      const dy = pts[1].y - pts[0].y;
+      return {
+        dist: Math.hypot(dx, dy) || 1,
+        midX: (pts[0].x + pts[1].x) / 2,
+        midY: (pts[0].y + pts[1].y) / 2
+      };
+    }
 
     canvas.addEventListener("pointerdown", e => {
-      dragging = true; moved = false;
-      startX = e.clientX; startY = e.clientY;
-      origX = view.x; origY = view.y;
+      canvas.setPointerCapture?.(e.pointerId);
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (activePointers.size === 1) {
+        dragging = true; moved = false;
+        startX = e.clientX; startY = e.clientY;
+        origX = view.x; origY = view.y;
+      } else if (activePointers.size === 2) {
+        moved = true;
+        dragging = false;
+        const p = getPinchInfo();
+        pinchStartDist = p.dist;
+        pinchStartScale = view.scale;
+        pinchMidX = p.midX;
+        pinchMidY = p.midY;
+        pinchOrigX = view.x;
+        pinchOrigY = view.y;
+      }
     });
 
-    window.addEventListener("pointermove", e => {
+    canvas.addEventListener("pointermove", e => {
       const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-      if (dragging) {
+
+      if (activePointers.has(e.pointerId)) {
+        activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+
+      if (activePointers.size === 2) {
+        const p = getPinchInfo();
+        const factor = p.dist / pinchStartDist;
+        const nextScale = Math.max(0.32, Math.min(3.2, pinchStartScale * factor));
+        const ratio = nextScale / pinchStartScale;
+        const relMidX = pinchMidX - rect.left - rect.width / 2;
+        const relMidY = pinchMidY - rect.top - rect.height / 2;
+        const panDx = p.midX - pinchMidX;
+        const panDy = p.midY - pinchMidY;
+        view.scale = nextScale;
+        view.x = relMidX - (relMidX - pinchOrigX) * ratio + panDx;
+        view.y = relMidY - (relMidY - pinchOrigY) * ratio + panDy;
+        requestDraw();
+        return;
+      }
+
+      if (dragging && activePointers.size === 1) {
         const dx = e.clientX - startX, dy = e.clientY - startY;
-        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true;
         view.x = origX + dx; view.y = origY + dy;
         requestDraw();
         return;
       }
-      const hit = hitTest(mx, my);
-      const newHov = hit ? (hit.item ? hit.item.id : hit.id) : null;
-      if (newHov !== hoveredId) {
-        hoveredId = newHov;
-        canvas.style.cursor = hoveredId ? "pointer" : "grab";
-        requestDraw();
+
+      if (e.pointerType === "mouse") {
+        const hit = hitTest(mx, my);
+        const newHov = hit ? (hit.item ? hit.item.id : hit.id) : null;
+        if (newHov !== hoveredId) {
+          hoveredId = newHov;
+          canvas.style.cursor = hoveredId ? "pointer" : "grab";
+          requestDraw();
+        }
       }
     });
 
-    window.addEventListener("pointerup", e => {
-      if (!dragging) return;
+    function onPointerEnd(e) {
+      const wasSingle = activePointers.size === 1 && dragging;
+      activePointers.delete(e.pointerId);
+
+      if (activePointers.size === 1) {
+        // 从双指松开一根手指，平滑切回单指拖拽不跳变
+        const rem = [...activePointers.values()][0];
+        dragging = true;
+        moved = true;
+        startX = rem.x; startY = rem.y;
+        origX = view.x; origY = view.y;
+        return;
+      }
+
       dragging = false;
-      if (!moved) {
+      if (wasSingle && !moved) {
         const rect = canvas.getBoundingClientRect();
         const hit = hitTest(e.clientX - rect.left, e.clientY - rect.top);
         if (hit) {
@@ -994,11 +1094,30 @@
             renderSheet();
             requestDraw();
           }
-        } else if (e.target === canvas) {
+        } else {
           closeSheet();
         }
       }
-    });
+    }
+
+    canvas.addEventListener("pointerup", onPointerEnd);
+    canvas.addEventListener("pointercancel", onPointerEnd);
+
+    // 灯箱移动端左右滑动翻页
+    const lbScrollEl = document.getElementById("lbScroll");
+    let lbTouchX = 0, lbTouchY = 0;
+    lbScrollEl.addEventListener("touchstart", e => {
+      if (e.touches.length === 1) { lbTouchX = e.touches[0].clientX; lbTouchY = e.touches[0].clientY; }
+    }, { passive: true });
+    lbScrollEl.addEventListener("touchend", e => {
+      if (!lbZoomed && lbList.length > 1 && e.changedTouches.length === 1) {
+        const dx = e.changedTouches[0].clientX - lbTouchX;
+        const dy = e.changedTouches[0].clientY - lbTouchY;
+        if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+          stepLightbox(dx < 0 ? 1 : -1);
+        }
+      }
+    }, { passive: true });
 
     canvas.addEventListener("wheel", e => {
       e.preventDefault();
